@@ -777,6 +777,59 @@ async function loadSquads() {
     }
 }
 
+// ===================== LIVE SCORES (ESPN overlay) =====================
+// Đè tỉ số realtime từ ESPN lên khung trận openfootball (khung giữ nguyên key/bảng/bracket).
+// Trận ĐANG đá => chỉ gắn m.live để hiển thị, KHÔNG ghi vào m.score
+// => điểm số & BXH chỉ chốt khi mãn cuộc, không nhảy múa trong trận.
+const ESPN_URL = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-20260719&limit=200';
+const ESPN_ALIAS = { 'Czechia': 'Czech Republic', 'Bosnia-Herzegovina': 'Bosnia & Herzegovina', 'United States': 'USA', 'Türkiye': 'Turkey', 'Congo DR': 'DR Congo' };
+const espnPairKey = (a, b, iso) => [mvNorm(a), mvNorm(b)].sort().join('|') + '|' + String(iso).slice(0, 10);
+
+async function loadLiveScores() {
+    try {
+        const res = await fetch(ESPN_URL, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const byPair = {};
+        for (const ev of (data.events || [])) {
+            const c = ev.competitions?.[0]; if (!c) continue;
+            const t = (c.competitors || []).map(x => ({
+                name: ESPN_ALIAS[x.team?.displayName] || x.team?.displayName || '',
+                score: +x.score || 0,
+                shoot: x.shootoutScore != null ? +x.shootoutScore : null
+            }));
+            if (t.length !== 2) continue;
+            byPair[espnPairKey(t[0].name, t[1].name, c.date || ev.date)] = {
+                t, state: ev.status?.type?.state, clock: ev.status?.displayClock || '', detail: ev.status?.type?.detail || ''
+            };
+        }
+        let liveCount = 0;
+        for (const m of state.matches) {
+            const ev = byPair[espnPairKey(m.team1, m.team2, m.kickoff.toISOString())];
+            delete m.live;
+            if (!ev) continue;
+            // Xếp đúng chiều team1/team2 (phòng ESPN đảo sân nhà/khách)
+            const i1 = mvNorm(ev.t[0].name) === mvNorm(m.team1) ? 0 : 1;
+            const s1 = ev.t[i1], s2 = ev.t[1 - i1];
+            if (ev.state === 'in') {
+                m.live = { h: s1.score, a: s2.score, clock: ev.clock, detail: ev.detail };
+                liveCount++;
+            } else if (ev.state === 'post' && !ftScore(m)) {
+                // Trận xong mà openfootball chưa có KQ => chốt bằng ESPN
+                // (openfootball cập nhật sau sẽ được ưu tiên vì loadMatches rebuild lại score)
+                m.score = m.score || {};
+                m.score.ft = [s1.score, s2.score];
+                if (s1.shoot != null && s2.shoot != null && (s1.shoot || s2.shoot)) m.score.p = [s1.shoot, s2.shoot];
+            }
+        }
+        if (liveCount) $('statusText').textContent = `🔴 LIVE: ${liveCount} trận đang đá · tỉ số & phút cập nhật trực tiếp (ESPN)`;
+        return true;
+    } catch (e) {
+        console.warn('Không lấy được tỉ số trực tiếp (ESPN), dùng openfootball:', e);
+        return false;
+    }
+}
+
 // ===================== SAVE (debounced) =====================
 function scheduleSave() {
     if (!state.me) return;
@@ -1101,7 +1154,7 @@ function renderGroups() {
             const statusHtml = ft
                 ? '<span class="text-emerald-400 font-semibold">✅ Đã kết thúc</span>'
                 : live
-                    ? `<span class="text-rose-400 font-semibold animate-pulse">${liveMinuteTxt(m)}</span>`
+                    ? `<span class="text-rose-400 font-semibold animate-pulse">${m.live ? `🔴 LIVE ${esc(m.live.clock)}` : liveMinuteTxt(m)}</span>`
                     : '<span class="text-slate-600">Chưa đá</span>';
 
             // Giữa card: chưa khóa => stepper nhập dự đoán; đã khóa => TỈ SỐ THẬT
@@ -1116,7 +1169,8 @@ function renderGroups() {
                     ${ft
                         ? `<div class="text-2xl md:text-3xl font-extrabold text-white leading-none tracking-widest">${ft[0]} - ${ft[1]}</div>
                            <div class="text-[10px] uppercase tracking-widest text-emerald-400/80 mt-1.5 font-bold">KQ Cuối cùng</div>`
-                        : `<div class="text-2xl md:text-3xl font-black text-rose-100 bg-rose-900/40 border border-rose-500/50 rounded-md px-3 py-1 shadow-[0_0_12px_rgba(225,29,72,0.35)] animate-pulse leading-none tracking-widest">? - ?</div>`}
+                        : `<div class="text-2xl md:text-3xl font-black text-rose-100 bg-rose-900/40 border border-rose-500/50 rounded-md px-3 py-1 shadow-[0_0_12px_rgba(225,29,72,0.35)] animate-pulse leading-none tracking-widest">${m.live ? `${m.live.h} - ${m.live.a}` : '? - ?'}</div>
+                           ${m.live ? `<div class="text-[10px] tracking-wider text-rose-400/80 mt-1.5 font-bold whitespace-nowrap">🔴 ${esc(m.live.clock)} · Tỉ số trực tiếp</div>` : ''}`}
                 </div>`;
 
             // Trận đã khóa: chip dự đoán của mình (trái) + summary dự đoán cả nhóm (phải) cùng 1 hàng
@@ -1222,14 +1276,20 @@ function renderUpcoming() {
     </div>`;
 }
 // Countdown + phút trận đang đá: tự nhịp mỗi phút (không chạy khi đang thao tác để tránh giật)
-setInterval(() => {
+setInterval(async () => {
     if (!state.me || interacting()) return;
     renderUpcoming();
-    // Có trận đang đá (đã khóa, chưa có KQ, trong ~2.5h từ giờ lăn bóng) thì cập nhật phút trận
+    // Có trận trong cửa sổ live (đã khóa, chưa có KQ, trong ~2.5h từ giờ lăn bóng)
+    // => kéo tỉ số trực tiếp từ ESPN rồi render lại
     const hasLive = state.matches.some(m => !ftScore(m)
         && Date.now() >= m.kickoff.getTime() - 3600000
         && Date.now() <= m.kickoff.getTime() + 150 * 60000);
-    if (hasLive) { renderGroups(); renderBracket(); }
+    if (hasLive) {
+        await loadLiveScores();
+        renderGroups(); renderBracket();
+        // Trận vừa kết thúc (ESPN chốt KQ) thì điểm số/BXH cũng cần cập nhật
+        renderLeaderboard(); renderStats(); renderHeaderPoints();
+    }
 }, 60000);
 
 // ===================== RENDER: BRACKET =====================
@@ -1270,7 +1330,7 @@ function bracketMatchCard(m) {
     <div class="bracket-match glass border ${ROUND_GLOW[m.round] || 'glow-r32'} rounded-lg p-2 space-y-1.5 transition-all duration-300">
         <div class="flex justify-between text-xs text-slate-500 px-0.5">
             <span>#${m.num} · ${m.kickoff.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} ${m.kickoff.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
-            <span>${scoreTxt ? `<b class="text-white">${scoreTxt}</b>` : (locked ? `<span class="text-rose-400 animate-pulse">${liveMinuteTxt(m)}</span>` : bothReal ? 'Chọn đội đi tiếp' : 'Chờ xác định đội')}
+            <span>${scoreTxt ? `<b class="text-white">${scoreTxt}</b>` : (locked ? `<span class="text-rose-400 animate-pulse">${m.live ? `🔴 ${m.live.h}-${m.live.a} · ${esc(m.live.clock)}` : liveMinuteTxt(m)}</span>` : bothReal ? 'Chọn đội đi tiếp' : 'Chờ xác định đội')}
             ${earned != null ? ` <b class="${earned > 0 ? 'text-sky-400' : 'text-slate-500'}">+${earned}đ</b>` : ''}</span>
         </div>
         ${sideRow(m.team1)}
@@ -1604,7 +1664,7 @@ $('masterLoginBtn').addEventListener('click', async () => {
 $('inpPassword').addEventListener('keydown', e => { if (e.key === 'Enter') $('masterLoginBtn').click(); });
 
 $('logoutBtn').addEventListener('click', () => store.logout());
-$('refreshBtn').addEventListener('click', async () => { await Promise.all([loadMatches(), loadSquads()]); if (state.me) renderAll(); });
+$('refreshBtn').addEventListener('click', async () => { await Promise.all([loadMatches(), loadSquads()]); await loadLiveScores(); if (state.me) renderAll(); });
 
 // Tabs
 function activateTab(target) {
@@ -1625,6 +1685,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
 // ===================== BOOT =====================
 const [loaded] = await Promise.all([loadMatches(), loadSquads()]);
+if (loaded) await loadLiveScores(); // đè tỉ số realtime (ESPN) lên khung openfootball ngay từ đầu
 store.init(
     user => {
         if (user?.uid !== state.me?.uid) state.hadDoc = false; // đổi user thì reset cờ
