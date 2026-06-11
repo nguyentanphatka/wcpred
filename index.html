@@ -352,6 +352,7 @@ const state = {
     allPreds: {},         // uid -> {name, photo, champion, picks}
     raceChart: null,
     saveTimer: null,
+    hadDoc: false,        // doc dự đoán của mình đã từng tồn tại trên server trong phiên này chưa
     lastInteract: 0,      // chống re-render khi người dùng đang thao tác (gây giật)
     squads: {},           // teamName -> [{number,pos,name,date_of_birth}]
     squadTeam: ''         // đội đang xem trong tab Đội hình
@@ -432,10 +433,35 @@ if (useFirebase) {
         console.warn('Cảnh báo Persistence (có thể do trình duyệt block):', e);
     }
 
+    // ===== CHẶN USER (BAN) =====
+    // Admin thêm username (chữ thường) vào mảng `banned` trong doc config/settings
+    // => user đang online bị đá ra ngay, không auto-login lại được, không đăng ký lại được.
+    let bannedList = [];
+    const isBannedName = n => bannedList.includes(String(n || '').trim().toLowerCase());
+    const usernameOf = u => ((u?.email || '').split('@')[0]).toLowerCase();
+    async function fetchBanned() {
+        try {
+            const snap = await fsMod.getDoc(fsMod.doc(db, 'config', 'settings'));
+            bannedList = (snap.exists() && snap.data().banned) || [];
+        } catch (e) { console.warn('Không đọc được danh sách banned:', e); }
+    }
+    async function kickOut() {
+        localStorage.removeItem('arena_username');
+        await authMod.signOut(auth);
+        alert('🚫 Tài khoản của bạn đã bị quản trị viên khóa.');
+    }
+
     store = {
         init(onUser, onAllPreds) {
+            // Nghe realtime config/settings: admin vừa thêm tên vào `banned` là user bị đá ra ngay
+            fsMod.onSnapshot(fsMod.doc(db, 'config', 'settings'), snap => {
+                bannedList = (snap.exists() && snap.data().banned) || [];
+                if (auth.currentUser && isBannedName(usernameOf(auth.currentUser))) kickOut();
+            });
             authMod.onAuthStateChanged(auth, async u => {
                 if (u) {
+                    await fetchBanned();
+                    if (isBannedName(usernameOf(u))) { await kickOut(); return; } // signOut sẽ gọi lại callback với u=null
                     const dName = u.displayName || (u.email ? u.email.split('@')[0] : 'User');
                     onUser({ uid: u.uid, name: dName, photo: u.photoURL || '' });
                 } else {
@@ -471,6 +497,8 @@ if (useFirebase) {
             });
         },
         async loginMaster(username, pass, name) {
+            await fetchBanned();
+            if (isBannedName(username)) throw new Error("🚫 Tài khoản này đã bị quản trị viên khóa!");
             try {
                 const configSnap = await fsMod.getDoc(fsMod.doc(db, 'config', 'settings'));
                 if (configSnap.exists()) {
@@ -601,6 +629,7 @@ function scheduleSave() {
     if (!state.me) return;
     clearTimeout(state.saveTimer);
     state.saveTimer = setTimeout(async () => {
+        if (!state.me) return; // đã bị đăng xuất trong lúc chờ debounce
         try {
             // UI chớp báo hiệu đang lưu
             $('statusSpinner').classList.remove('hidden');
@@ -630,8 +659,16 @@ function scheduleSave() {
 }
 
 function setPick(key, pick) {
+    // Chốt chặn cuối: trận đã khóa (trước giờ bóng lăn 1h) thì không nhận pick,
+    // kể cả khi nút trên màn hình vẫn còn bấm được do render từ trước mốc khóa
+    const m = state.matches.find(x => x.key === key);
+    if (!m || isLocked(m)) {
+        $('statusText').textContent = '🔒 Trận này đã khóa dự đoán (trước giờ bóng lăn 1 tiếng)!';
+        return false;
+    }
     state.myPred.picks[key] = pick;
     scheduleSave();
+    return true;
 }
 
 // ===================== RENDER: GROUPS =====================
@@ -646,6 +683,14 @@ function countdownTxt(m) {
     const s = Math.max(0, (m.kickoff.getTime() - Date.now()) / 1000);
     const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), mi = Math.floor(s % 3600 / 60);
     return d ? `${d} ngày ${h}g` : h ? `${h}g ${mi}p` : `${mi} phút`;
+}
+// Thời gian còn lại để dự đoán = giờ bóng lăn - 1h (mốc khóa của isLocked)
+function predictWindowHtml(m) {
+    const left = (m.kickoff.getTime() - 3600000 - Date.now()) / 1000;
+    if (left <= 0) return '<span class="text-amber-500 font-semibold">🔒 Đã khóa dự đoán</span>';
+    const d = Math.floor(left / 86400), h = Math.floor(left % 86400 / 3600), mi = Math.floor(left % 3600 / 60);
+    const txt = d ? `${d} ngày ${h}g` : h ? `${h}g ${mi}p` : `${mi} phút`;
+    return `<span class="text-emerald-400">⏳ Còn <b>${txt}</b> để dự đoán</span>`;
 }
 
 // Stepper −/+ chọn tỉ số (update DOM tại chỗ, không re-render => không giật)
@@ -858,7 +903,11 @@ document.addEventListener('click', e => {
     v = v == null ? (d > 0 ? 0 : null) : Math.min(20, Math.max(0, v + d));
     if (v === cur[side] || (v == null && cur[side] == null)) return;
     state.lastInteract = Date.now();
-    setPick(key, { ...cur, [side]: v });
+    if (!setPick(key, { ...cur, [side]: v })) {
+        // Trận vừa khóa mà nút còn cũ: render lại để disable, không cập nhật số
+        renderGroups(); renderUpcoming();
+        return;
+    }
     document.querySelectorAll(`[data-sv="${CSS.escape(key)}|${side}"]`).forEach(el => {
         el.textContent = v ?? '·';
         el.classList.toggle('text-slate-600', v == null);
@@ -883,6 +932,7 @@ function renderUpcoming() {
         ${next.map(m => {
             const label = m.group ? esc(m.group) : (ROUND_VI[m.round] || esc(m.round));
             const bothReal = isRealTeam(m.team1) && isRealTeam(m.team2);
+            const locked = isLocked(m);
             return `
             <div class="glass border border-sky-500/25 rounded-2xl p-4 relative overflow-hidden transition-all duration-300 hover:border-sky-400/50 hover:shadow-xl hover:shadow-sky-950/40">
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-sky-500/10 rounded-full blur-2xl pointer-events-none"></div>
@@ -893,11 +943,12 @@ function renderUpcoming() {
                 <div class="flex flex-wrap items-center justify-center gap-2 md:gap-3 text-sm md:text-lg font-bold text-white mb-1">
                     <span class="flex-1 text-right">${teamHtml(m.team1)}</span>
                     ${m.group && bothReal ? `
-                        <span class="flex items-center gap-2">${stepperHtml(m, 'h', false)}<span class="text-slate-600">:</span>${stepperHtml(m, 'a', false)}</span>
+                        <span class="flex items-center gap-2">${stepperHtml(m, 'h', locked)}<span class="text-slate-600">:</span>${stepperHtml(m, 'a', locked)}</span>
                     ` : '<span class="text-slate-500 text-sm font-extrabold px-2">VS</span>'}
                     <span class="flex-1">${teamHtml(m.team2)}</span>
                 </div>
                 <p class="text-center text-xs text-slate-500">🕐 ${fmtKick(m)} <span class="text-slate-600">(giờ máy bạn)</span> · ${esc(m.ground || '')}</p>
+                <p class="text-center text-xs mt-1">${predictWindowHtml(m)}</p>
             </div>`;
         }).join('')}
     </div>`;
@@ -1138,12 +1189,52 @@ function renderStatsDetail() {
         return { name: pred.name || uid, me: uid === state.me?.uid, pickTxt, earned };
     }).sort((a, b) => (b.earned ?? -1) - (a.earned ?? -1));
 
+    // Tổng hợp dự đoán cả nhóm cho trận này: đã/chưa dự đoán + phân bố thắng/hòa/thua
+    const totalPlayers = Object.keys(state.allPreds).length;
+    const { counts, total: predicted } = pickCountsFor(m);
+    const notPredicted = totalPlayers - predicted;
+    const distOrder = m.group ? [m.team1, 'Hòa', m.team2] : [m.team1, m.team2];
+    const distHtml = distOrder.map(label => {
+        const n = counts[label] || 0;
+        const pct = predicted ? Math.round(n / predicted * 100) : 0;
+        const isDraw = label === 'Hòa';
+        return `
+        <div class="flex items-center gap-2">
+            <span class="w-36 md:w-48 text-xs text-white truncate">${isDraw ? '🤝 Hòa' : `${flagOf(label)} ${esc(label)} ${m.group ? 'thắng' : 'đi tiếp'}`}</span>
+            <div class="flex-1 bg-slate-900/80 border border-white/5 rounded-full h-4 overflow-hidden">
+                <div class="${isDraw ? 'bg-slate-500/80' : 'bg-gradient-to-r from-sky-600 to-cyan-400'} h-full rounded-full transition-all duration-500" style="width:${pct}%"></div>
+            </div>
+            <span class="text-xs text-slate-400 w-24 text-right shrink-0"><b class="text-white">${n}</b> người · ${pct}%</span>
+        </div>`;
+    }).join('');
+
+    const summaryHtml = `
+    <div class="grid grid-cols-3 gap-2 mb-3 text-center">
+        <div class="bg-slate-900/60 border border-white/10 rounded-lg p-2.5">
+            <div class="text-xl font-extrabold text-white">${totalPlayers}</div>
+            <div class="text-[11px] text-slate-500 uppercase tracking-wider">👥 Người chơi</div>
+        </div>
+        <div class="bg-sky-950/40 border border-sky-700/40 rounded-lg p-2.5">
+            <div class="text-xl font-extrabold text-sky-400">${predicted}</div>
+            <div class="text-[11px] text-slate-500 uppercase tracking-wider">🎯 Đã dự đoán</div>
+        </div>
+        <div class="bg-slate-900/60 border border-white/10 rounded-lg p-2.5">
+            <div class="text-xl font-extrabold text-slate-400">${notPredicted}</div>
+            <div class="text-[11px] text-slate-500 uppercase tracking-wider">😴 Chưa dự đoán</div>
+        </div>
+    </div>
+    <div class="bg-slate-900/40 border border-white/10 rounded-lg p-3 mb-3 space-y-2">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">📊 Tổng hợp lựa chọn</p>
+        ${predicted ? distHtml : '<p class="text-xs text-slate-500">Chưa có ai dự đoán trận này.</p>'}
+    </div>`;
+
     $('statsMatchDetail').innerHTML = `
         <div class="glass border border-sky-500/25 neon-card rounded-lg p-4 mb-3 flex items-center justify-center gap-4 text-lg">
             ${teamHtml(m.team1, 'font-bold text-white')}
             <span class="text-2xl font-extrabold ${ft ? 'text-sky-400' : 'text-slate-600'}">${ft ? `${ft[0]} - ${ft[1]}` : 'vs'}</span>
             ${teamHtml(m.team2, 'font-bold text-white')}
         </div>
+        ${summaryHtml}
         <table class="w-full text-sm">
             <thead class="text-xs text-slate-500 uppercase"><tr>
                 <th class="text-left py-2">Người chơi</th><th class="text-center">Dự đoán</th><th class="text-right">Điểm</th>
@@ -1257,13 +1348,15 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 const [loaded] = await Promise.all([loadMatches(), loadSquads()]);
 store.init(
     user => {
+        if (user?.uid !== state.me?.uid) state.hadDoc = false; // đổi user thì reset cờ
         state.me = user;
         if (user) {
             // nạp lại pick của chính mình từ allPreds nếu có
             const mine = state.allPreds[user.uid];
-            if (mine) state.myPred = { picks: mine.picks || {}, champion: mine.champion || '' };
+            if (mine) { state.hadDoc = true; state.myPred = { picks: mine.picks || {}, champion: mine.champion || '' }; }
             if (loaded) showApp();
         } else {
+            clearTimeout(state.saveTimer); // hủy save đang chờ, tránh ghi lại data sau khi out
             state.myPred = { picks: {}, champion: '' };
             showLogin();
         }
@@ -1271,9 +1364,19 @@ store.init(
     all => {
         state.allPreds = all;
         if (state.me && all[state.me.uid]) {
+            state.hadDoc = true;
             state.myPred = { picks: all[state.me.uid].picks || {}, champion: all[state.me.uid].champion || '' };
         } else if (state.me) {
-            scheduleSave(); // user mới: tạo doc ngay để xuất hiện trong BXH/thống kê
+            if (state.hadDoc) {
+                // Doc của mình TỪNG tồn tại mà giờ biến mất => admin đã xóa trên Firebase
+                // => KHÔNG tự tạo lại, ép đăng xuất luôn.
+                clearTimeout(state.saveTimer);
+                state.hadDoc = false;
+                alert('🚫 Dữ liệu của bạn đã bị quản trị viên xóa. Bạn sẽ được đăng xuất.');
+                store.logout();
+                return;
+            }
+            scheduleSave(); // user mới thật sự: tạo doc ngay để xuất hiện trong BXH/thống kê
         }
         if (state.me && loaded && !$('appSection').classList.contains('hidden')) {
             // Đang thao tác (bấm tỉ số/pick) thì chỉ cập nhật phần nhẹ, không rebuild
