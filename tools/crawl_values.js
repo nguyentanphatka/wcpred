@@ -86,8 +86,8 @@ async function playerData(id) {
   tn.source = 'transfermarkt.com (nhập tay) + FotMob (crawl tự động)';
   tn.autoCount = (tn.autoCount || 0) + adds.length;
 
+  // Nhúng thẳng vào index.html — KHÔNG ghi file phụ
   const payload = JSON.stringify(tn);
-  fs.writeFileSync(path.join(__dirname, 'values_merged.json'), payload);
   html = html.replace(reTn, `$1\n${payload}\n$3`);
   fs.writeFileSync(INDEX, html);
 

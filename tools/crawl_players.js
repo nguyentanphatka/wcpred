@@ -112,9 +112,9 @@ async function pool(items, n, fn) {
   console.log('Kết quả:', stats);
 
   const payload = JSON.stringify({ updated: new Date().toISOString().slice(0, 10), source: 'Wikidata / Wikimedia Commons', stats, players: db });
-  fs.writeFileSync(path.join(__dirname, 'playerdb.json'), payload);
 
-  // 5) Nhúng vào index.html (thay nội dung <script id="playerdb">)
+  // 5) Nhúng vào index.html (thay nội dung <script id="playerdb">) — KHÔNG ghi file phụ
+
   let html = fs.readFileSync(INDEX, 'utf8');
   const re = /(<script id="playerdb" type="application\/json">)[\s\S]*?(<\/script>)/;
   if (!re.test(html)) throw new Error('Không tìm thấy <script id="playerdb"> trong index.html');

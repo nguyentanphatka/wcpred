@@ -148,6 +148,36 @@
         .step-btn:disabled { opacity: 0.25; cursor: default; }
         @keyframes popVal { 0% { transform: scale(1.5); color: #38bdf8; } 100% { transform: scale(1); } }
         .pop { animation: popVal 0.25s ease; }
+
+        /* CHATBOT AI WIDGET STYLES */
+        #ai-chatbot {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .chat-bubble-msg {
+            max-width: 85%;
+            word-wrap: break-word;
+        }
+        .typing-indicator span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: #38bdf8;
+            border-radius: 50%;
+            animation: typing 1.4s infinite both;
+            margin: 0 1px;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+        /* Style markdown basic in chat */
+        .ai-msg-content strong { color: #7dd3fc; }
+        .ai-msg-content p { margin-bottom: 0.5rem; }
+        .ai-msg-content p:last-child { margin-bottom: 0; }
+        .ai-msg-content ul { padding-left: 1rem; list-style-type: disc; margin-bottom: 0.5rem; }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-300 font-sans antialiased min-h-screen flex flex-col">
@@ -348,6 +378,53 @@
     <footer class="bg-slate-950 py-5 text-center border-t border-slate-800 mt-auto">
         <p class="text-xs text-slate-500">WC 2026 Predict Arena · Dữ liệu lịch & kết quả: <a class="text-indigo-400 hover:underline" href="https://github.com/openfootball/worldcup.json" target="_blank">openfootball/worldcup.json</a> · Backend: Firebase</p>
     </footer>
+
+    <!-- AI CHATBOT WIDGET -->
+    <div id="ai-chatbot" class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+        <!-- Chat Window -->
+        <div id="ai-chat-window" class="hidden w-[350px] max-w-[calc(100vw-2rem)] h-[450px] max-h-[70vh] mb-4 glass border border-sky-500/30 rounded-2xl shadow-2xl flex-col overflow-hidden neon-card transform origin-bottom-right transition-all">
+            <!-- Chat Header -->
+            <div class="bg-sky-950/80 border-b border-sky-500/20 p-3 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🎙️</span>
+                    <div>
+                        <h4 class="text-sm font-bold text-white">BLV Mõm</h4>
+                        <p class="text-[10px] text-sky-300">Phân tích kèo & Chiến thuật</p>
+                    </div>
+                </div>
+                <button id="close-chat-btn" class="text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <!-- Messages Area -->
+            <div id="ai-chat-messages" class="flex-1 p-4 overflow-y-auto flex flex-col gap-3 scroll-smooth text-sm">
+                <!-- Welcome Message -->
+                <div class="flex gap-2">
+                    <div class="w-7 h-7 rounded-full bg-sky-900 border border-sky-500/50 flex items-center justify-center shrink-0">🎙️</div>
+                    <div class="chat-bubble-msg bg-slate-800/80 border border-slate-700 rounded-2xl rounded-tl-sm p-3 text-slate-200">
+                        Chào đại ka! Đệ là BLV Tiểu Đệ - Chuyên gia phân tích dữ liệu WC 2026. Đại ka cần soi kèo trận nào, xin chiến thuật hay dự đoán tỷ lệ thắng thì cứ ném vào đây nhé!
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-3 border-t border-sky-500/20 bg-slate-900/90">
+                <form id="ai-chat-form" class="flex gap-2">
+                    <input type="text" id="ai-chat-input" class="flex-1 bg-slate-800 border border-slate-600 rounded-full px-4 py-2 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors placeholder-slate-400" placeholder="VD: Phân tích kèo Anh vs Pháp..." autocomplete="off">
+                    <button type="submit" id="ai-chat-submit" class="w-9 h-9 rounded-full bg-sky-600 hover:bg-sky-500 text-white flex items-center justify-center transition-colors shadow-[0_0_10px_rgba(56,189,248,0.4)]">
+                        <svg class="w-4 h-4 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Chat Toggle Button -->
+        <button id="ai-chat-toggle" class="w-14 h-14 rounded-full bg-gradient-to-tr from-sky-600 to-blue-500 text-white flex items-center justify-center shadow-lg shadow-sky-900/50 hover:shadow-sky-500/40 hover:scale-105 transition-all neon-pulse relative z-10 border border-sky-300/30">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+            <span class="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full border-2 border-slate-900"></span>
+        </button>
+    </div>
 
 <!-- ============================================================
      HỒ SƠ CẦU THỦ (id=playerdb) — sinh tự động bởi tools/crawl_players.js
@@ -760,6 +837,15 @@ function countdownTxt(m) {
     const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), mi = Math.floor(s % 3600 / 60);
     return d ? `${d} ngày ${h}g` : h ? `${h}g ${mi}p` : `${mi} phút`;
 }
+
+// Trạng thái trận (Thêm chữ Khoảng phút dựa trên giờ hệ thống)
+function liveMinuteTxt(m) {
+    const mins = Math.floor((Date.now() - m.kickoff.getTime()) / 60000);
+    if (mins < 0) return `🔒 Khóa kèo · Lăn bóng sau ${-mins}p`;
+    if (mins > 150) return `🔴 Chờ cập nhật KQ`; // Quá giờ thì báo đợi KQ chứ không báo phút ảo nữa
+    return `🔴 Đang diễn ra (Khoảng phút ${mins})`;
+}
+
 // Thời gian còn lại để dự đoán = giờ bóng lăn - 1h (mốc khóa của isLocked)
 function predictWindowHtml(m) {
     const left = (m.kickoff.getTime() - 3600000 - Date.now()) / 1000;
@@ -1015,7 +1101,7 @@ function renderGroups() {
             const statusHtml = ft
                 ? '<span class="text-emerald-400 font-semibold">✅ Đã kết thúc</span>'
                 : live
-                    ? '<span class="text-rose-400 font-semibold animate-pulse">🔴 Đang đá / chờ KQ</span>'
+                    ? `<span class="text-rose-400 font-semibold animate-pulse">${liveMinuteTxt(m)}</span>`
                     : '<span class="text-slate-600">Chưa đá</span>';
 
             // Giữa card: chưa khóa => stepper nhập dự đoán; đã khóa => TỈ SỐ THẬT
@@ -1026,12 +1112,11 @@ function renderGroups() {
                     ${stepperHtml(m, 'a', false)}
                 </div>`
                 : `
-                <div class="shrink-0 text-center px-3">
+                <div class="shrink-0 text-center px-2 md:px-3">
                     ${ft
-                        ? `<div class="text-2xl font-extrabold text-white leading-none">${ft[0]} - ${ft[1]}</div>
-                           <div class="text-[10px] uppercase tracking-wider text-emerald-400/80 mt-1">Tỉ số thật</div>`
-                        : `<div class="text-xl font-extrabold text-rose-400 animate-pulse leading-none">? - ?</div>
-                           <div class="text-[10px] uppercase tracking-wider text-rose-400/80 mt-1">Đang đá</div>`}
+                        ? `<div class="text-2xl md:text-3xl font-extrabold text-white leading-none tracking-widest">${ft[0]} - ${ft[1]}</div>
+                           <div class="text-[10px] uppercase tracking-widest text-emerald-400/80 mt-1.5 font-bold">KQ Cuối cùng</div>`
+                        : `<div class="text-2xl md:text-3xl font-black text-rose-100 bg-rose-900/40 border border-rose-500/50 rounded-md px-3 py-1 shadow-[0_0_12px_rgba(225,29,72,0.35)] animate-pulse leading-none tracking-widest">? - ?</div>`}
                 </div>`;
 
             // Trận đã khóa: chip dự đoán của mình (trái) + summary dự đoán cả nhóm (phải) cùng 1 hàng
@@ -1136,8 +1221,16 @@ function renderUpcoming() {
         }).join('')}
     </div>`;
 }
-// Countdown tự nhịp mỗi phút (không chạy khi đang thao tác để tránh giật)
-setInterval(() => { if (state.me && !interacting()) renderUpcoming(); }, 60000);
+// Countdown + phút trận đang đá: tự nhịp mỗi phút (không chạy khi đang thao tác để tránh giật)
+setInterval(() => {
+    if (!state.me || interacting()) return;
+    renderUpcoming();
+    // Có trận đang đá (đã khóa, chưa có KQ, trong ~2.5h từ giờ lăn bóng) thì cập nhật phút trận
+    const hasLive = state.matches.some(m => !ftScore(m)
+        && Date.now() >= m.kickoff.getTime() - 3600000
+        && Date.now() <= m.kickoff.getTime() + 150 * 60000);
+    if (hasLive) { renderGroups(); renderBracket(); }
+}, 60000);
 
 // ===================== RENDER: BRACKET =====================
 function bracketMatchCard(m) {
@@ -1177,7 +1270,7 @@ function bracketMatchCard(m) {
     <div class="bracket-match glass border ${ROUND_GLOW[m.round] || 'glow-r32'} rounded-lg p-2 space-y-1.5 transition-all duration-300">
         <div class="flex justify-between text-xs text-slate-500 px-0.5">
             <span>#${m.num} · ${m.kickoff.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} ${m.kickoff.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
-            <span>${scoreTxt ? `<b class="text-white">${scoreTxt}</b>` : (locked ? '🔒' : bothReal ? 'Chọn đội đi tiếp' : 'Chờ xác định đội')}
+            <span>${scoreTxt ? `<b class="text-white">${scoreTxt}</b>` : (locked ? `<span class="text-rose-400 animate-pulse">${liveMinuteTxt(m)}</span>` : bothReal ? 'Chọn đội đi tiếp' : 'Chờ xác định đội')}
             ${earned != null ? ` <b class="${earned > 0 ? 'text-sky-400' : 'text-slate-500'}">+${earned}đ</b>` : ''}</span>
         </div>
         ${sideRow(m.team1)}
@@ -1575,6 +1668,165 @@ store.init(
         }
     }
 );
+
+// ===================== AI CHATBOT INTEGRATION (Gemini RAG) =====================
+const apiKey = ""; // Canvas auto-injection
+const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+// Stateless memory
+let chatHistory = []; 
+
+const sysPrompt = `Ngươi là "Bình Luận Viên Tiểu Đệ" - chuyên gia phân tích bóng đá xuất sắc, thực dụng và am hiểu chiến thuật. 
+Bối cảnh hiện tại: Tháng 6 năm 2026, World Cup 2026 đang diễn ra. TUYỆT ĐỐI KHÔNG mang dữ liệu cũ của World Cup 2022 vào (VD không được nói Messi ở PSG, hay Pháp đội hình 2022). 
+Hãy đọc kỹ phần "DỮ LIỆU THỰC TẾ WC 2026 TỪ HỆ THỐNG" được đính kèm ở cuối câu hỏi để biết chính xác cầu thủ nào đang thi đấu và trận nào sắp đá.
+
+Khi người dùng hỏi về trận đấu, BẮT BUỘC đưa ra các ý chính sau một cách súc tích (Dùng list gạch đầu dòng):
+1. Đánh giá sức mạnh 2 đội (Nhắc tên 1-2 key player hiện có trong danh sách).
+2. Tỷ lệ % thắng/thua/hòa của trận đấu (tổng bằng 100%).
+3. Phân tích lối chơi, điểm nóng chiến thuật (tactical analysis).
+4. Dự đoán tỷ số cuối cùng.
+
+Giọng điệu: Xưng "đệ" và gọi người dùng là "đại ka". Nói rành mạch, dứt khoát, dùng các thuật ngữ chuyên môn như pressing, xG, khối low-block... In đậm (*) cho ý chính.`;
+
+function toggleChat() {
+    const win = $('ai-chat-window');
+    win.classList.toggle('hidden');
+    win.classList.toggle('flex');
+    if (!win.classList.contains('hidden')) $('ai-chat-input').focus();
+}
+
+$('ai-chat-toggle').addEventListener('click', toggleChat);
+$('close-chat-btn').addEventListener('click', toggleChat);
+
+function appendMessage(role, text) {
+    const container = $('ai-chat-messages');
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 ' + (role === 'user' ? 'flex-row-reverse' : '');
+    
+    // Markdown basic (In đậm và xuống dòng)
+    const formattedText = esc(text).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>');
+
+    if (role === 'user') {
+        div.innerHTML = `
+            <div class="chat-bubble-msg bg-sky-600 border border-sky-500 rounded-2xl rounded-tr-sm p-3 text-white">
+                ${formattedText}
+            </div>
+        `;
+    } else {
+        div.innerHTML = `
+            <div class="w-7 h-7 rounded-full bg-sky-900 border border-sky-500/50 flex items-center justify-center shrink-0">🎙️</div>
+            <div class="chat-bubble-msg ai-msg-content bg-slate-800/80 border border-slate-700 rounded-2xl rounded-tl-sm p-3 text-slate-200">
+                ${formattedText}
+            </div>
+        `;
+    }
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function showTyping() {
+    const container = $('ai-chat-messages');
+    const div = document.createElement('div');
+    div.id = 'ai-typing-indicator';
+    div.className = 'flex gap-2';
+    div.innerHTML = `
+        <div class="w-7 h-7 rounded-full bg-sky-900 border border-sky-500/50 flex items-center justify-center shrink-0">🎙️</div>
+        <div class="chat-bubble-msg bg-slate-800/80 border border-slate-700 rounded-2xl rounded-tl-sm p-3 flex items-center typing-indicator">
+            <span></span><span></span><span></span>
+        </div>
+    `;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function removeTyping() {
+    const ind = $('ai-typing-indicator');
+    if (ind) ind.remove();
+}
+
+async function fetchGeminiWithRetry(payload, maxRetries = 4) {
+    let delay = 1000;
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return await response.json();
+        } catch (e) {
+            if (i === maxRetries - 1) throw e;
+            await new Promise(r => setTimeout(r, delay));
+            delay *= 2;
+        }
+    }
+}
+
+$('ai-chat-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = $('ai-chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+
+    appendMessage('user', text);
+    input.value = '';
+    
+    // --- BẮT ĐẦU LOGIC RAG: Bơm dữ liệu thật vào ngữ cảnh ---
+    let contextData = "\n\n--- DỮ LIỆU THỰC TẾ WC 2026 TỪ HỆ THỐNG ---\n";
+    // Mớm 4 trận chưa đá gần nhất
+    const upcomingMatches = state.matches.filter(m => m.kickoff.getTime() > Date.now()).sort((a, b) => a.kickoff - b.kickoff).slice(0, 4);
+    if (upcomingMatches.length > 0) {
+        contextData += `Lịch thi đấu sắp tới (Giờ VN):\n` + upcomingMatches.map(m => `- ${m.team1} vs ${m.team2} (${m.kickoff.toLocaleString('vi-VN')})`).join('\n') + `\n\n`;
+        contextData += `Danh sách cầu thủ 2026 của các đội này:\n`;
+        const upcomingTeams = new Set();
+        upcomingMatches.forEach(m => { upcomingTeams.add(m.team1); upcomingTeams.add(m.team2); });
+        
+        upcomingTeams.forEach(t => {
+            if (state.squads[t]) {
+                const squadStr = state.squads[t].map(p => p.name).join(', ');
+                contextData += `- ${t}: ${squadStr}\n`;
+            }
+        });
+    }
+    const hiddenPrompt = text + contextData;
+    // --- KẾT THÚC LOGIC RAG ---
+
+    // Ta lưu hidden prompt (gồm cả data RAG) nhưng ở display thì chỉ hiện text người dùng gõ
+    chatHistory.push({ role: "user", parts: [{ text: hiddenPrompt }] });
+
+    showTyping();
+    const btn = $('ai-chat-submit');
+    btn.disabled = true;
+    btn.classList.add('opacity-50');
+
+    try {
+        const payload = {
+            systemInstruction: { parts: [{ text: sysPrompt }] },
+            contents: chatHistory
+        };
+
+        const result = await fetchGeminiWithRetry(payload);
+        const botResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (botResponse) {
+            removeTyping();
+            appendMessage('model', botResponse);
+            chatHistory.push({ role: "model", parts: [{ text: botResponse }] });
+        } else {
+            throw new Error("Không có phản hồi từ mô hình");
+        }
+    } catch (err) {
+        removeTyping();
+        console.error("Gemini API Error:", err);
+        appendMessage('model', 'Đệ đang check VAR đoạn này, mạng hơi lagg đại ka chờ xíu thử lại nhé!');
+        chatHistory.pop(); // Xóa query lỗi khỏi context
+    } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50');
+        input.focus();
+    }
+});
 </script>
 </body>
 </html>
