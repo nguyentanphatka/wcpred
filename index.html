@@ -77,6 +77,54 @@
             animation: shimmer 3s linear infinite;
         }
 
+        /* Khối Nhà Vô Địch: ánh vàng nhẹ nhàng, làm nền tôn ô chọn đội lên */
+        @keyframes champFire {
+            0%, 100% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.25), 0 0 24px rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.4); }
+            50% { box-shadow: 0 0 14px rgba(245, 158, 11, 0.4), 0 0 34px rgba(245, 158, 11, 0.16); border-color: rgba(251, 191, 36, 0.6); }
+        }
+        .champ-fire { animation: champFire 3s ease-in-out infinite; }
+
+        /* Vương miện: chỉ tỏa sáng nhẹ, không nhảy */
+        @keyframes crownPulse {
+            0%, 100% { filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.6)); }
+            50% { filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.85)); }
+        }
+        .champ-crown { display: inline-block; animation: crownPulse 3s ease-in-out infinite; }
+
+        /* Tiêu đề vàng dịu */
+        .champ-title { color: #fbbf24 !important; text-shadow: 0 0 10px rgba(245, 158, 11, 0.35); }
+
+        /* Ô giá trị được chọn: TÂM ĐIỂM — lửa vàng→cam rực, chữ vàng chanh phát sáng mạnh */
+        @keyframes champSelectGlow {
+            0%, 100% { box-shadow: 0 0 16px rgba(245, 158, 11, 0.65), 0 0 44px rgba(245, 158, 11, 0.3), inset 0 0 16px rgba(245, 158, 11, 0.15); border-color: #fbbf24; }
+            33% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.95), 0 0 80px rgba(245, 158, 11, 0.5), inset 0 0 26px rgba(245, 158, 11, 0.25); border-color: #fde047; }
+            66% { box-shadow: 0 0 24px rgba(251, 146, 60, 0.85), 0 0 64px rgba(251, 146, 60, 0.4), inset 0 0 22px rgba(251, 146, 60, 0.2); border-color: #fdba74; }
+        }
+        .champ-select {
+            animation: champSelectGlow 1.6s ease-in-out infinite;
+            background: linear-gradient(135deg, rgba(146, 64, 14, 0.6), rgba(15, 23, 42, 0.95)) !important;
+            color: #fde047 !important;
+            font-weight: 800;
+            font-size: 1.05rem !important;
+            text-shadow: 0 0 12px rgba(251, 191, 36, 0.9), 0 0 28px rgba(245, 158, 11, 0.5);
+            border-width: 2px !important;
+        }
+        /* Trình duyệt hay làm mờ select disabled => ép giữ độ sáng cho ô đã chốt */
+        .champ-select:disabled { opacity: 1; cursor: not-allowed; }
+        .champ-select option { background: #0f172a; color: #e2e8f0; font-weight: 400; }
+
+        /* Dropdown chọn đội vô địch: sóng vàng lan tỏa + phồng nhẹ, kêu gọi bấm khi CHƯA chốt */
+        @keyframes champSelectPulse {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6); transform: scale(1); }
+            50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); transform: scale(1.04); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); transform: scale(1); }
+        }
+        .champ-select-attention {
+            animation: champSelectPulse 1.6s ease-in-out infinite;
+            border-color: #f59e0b !important;
+            background: linear-gradient(135deg, rgba(120, 53, 15, 0.5), rgba(15, 23, 42, 0.9)) !important;
+        }
+
         /* Bracket layout: columns flex, rows space evenly so parents align between children */
         .bracket-scroll { overflow-x: auto; }
         .bracket { display: flex; min-width: 1100px; gap: 12px; }
@@ -215,13 +263,13 @@
             <!-- TAB: BRACKET -->
             <div id="tab-bracket" class="tab-content space-y-5">
                 <!-- Champion pick -->
-                <div class="shimmer-gold bg-gradient-to-r from-amber-950/40 to-slate-800/60 border border-amber-700/40 rounded-xl p-4 flex flex-wrap items-center gap-4 transition-shadow hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]">
-                    <span class="text-3xl">👑</span>
+                <div class="champ-fire bg-gradient-to-r from-amber-950/40 to-slate-800/60 border border-amber-700/40 rounded-xl p-4 flex flex-wrap items-center gap-4">
+                    <span class="text-3xl champ-crown">👑</span>
                     <div class="flex-1 min-w-[200px]">
-                        <p class="text-sm font-bold text-amber-400">Nhà Vô Địch của bạn (+15đ nếu đúng)</p>
+                        <p class="text-sm font-bold champ-title">Nhà Vô Địch của bạn (+15đ nếu đúng)</p>
                         <p class="text-xs text-slate-500" id="championLockNote">Chọn 1 LẦN DUY NHẤT trước vòng knockout (28/6)</p>
                     </div>
-                    <select id="championSelect" class="w-full md:w-auto md:min-w-[200px] bg-slate-900 border border-amber-700/50 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-amber-500"></select>
+                    <select id="championSelect" class="champ-select w-full md:w-auto md:min-w-[200px] bg-slate-900 border border-amber-700/50 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-amber-500"></select>
                 </div>
 
                 <div class="glass border border-white/10 rounded-xl p-3.5 text-sm flex flex-wrap items-center gap-2">
@@ -854,28 +902,60 @@ function renderGroups() {
             const pick = state.myPred.picks[m.key] || {};
             const locked = isLocked(m);
             const ft = ftScore(m);
+            const live = locked && !ft; // đang đá hoặc đã đá xong nhưng nguồn chưa cập nhật KQ
             const earned = matchEarned(state.myPred, m);
+            const hasPick = pick.h != null && pick.a != null;
             const { counts, total } = pickCountsFor(m);
             const crowd = total ? `<span class="text-xs text-slate-500">${Object.entries(counts).map(([k, v]) => `${isRealTeam(k) ? flagOf(k) : k} ${Math.round(v / total * 100)}%`).join(' · ')}</span>` : '';
+
+            // Trạng thái trận (góc phải trên)
+            const statusHtml = ft
+                ? '<span class="text-emerald-400 font-semibold">✅ Đã kết thúc</span>'
+                : live
+                    ? '<span class="text-rose-400 font-semibold animate-pulse">🔴 Đang đá / chờ KQ</span>'
+                    : '<span class="text-slate-600">Chưa đá</span>';
+
+            // Giữa card: chưa khóa => stepper nhập dự đoán; đã khóa => TỈ SỐ THẬT
+            const centerHtml = !locked ? `
+                <div class="flex items-center gap-1.5 md:gap-2 shrink-0">
+                    ${stepperHtml(m, 'h', false)}
+                    <span class="text-slate-600 font-bold">:</span>
+                    ${stepperHtml(m, 'a', false)}
+                </div>`
+                : `
+                <div class="shrink-0 text-center px-3">
+                    ${ft
+                        ? `<div class="text-2xl font-extrabold text-white leading-none">${ft[0]} - ${ft[1]}</div>
+                           <div class="text-[10px] uppercase tracking-wider text-emerald-400/80 mt-1">Tỉ số thật</div>`
+                        : `<div class="text-xl font-extrabold text-rose-400 animate-pulse leading-none">? - ?</div>
+                           <div class="text-[10px] uppercase tracking-wider text-rose-400/80 mt-1">Đang đá</div>`}
+                </div>`;
+
+            // Trận đã khóa: chip dự đoán của mình (trái) + summary dự đoán cả nhóm (phải) cùng 1 hàng
+            const myPickHtml = locked ? `
+                <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 text-xs">
+                    <span class="flex items-center gap-2">
+                        <span class="px-2.5 py-1 rounded-full border ${hasPick ? 'bg-sky-500/10 border-sky-500/40 text-sky-300' : 'bg-white/5 border-white/10 text-slate-500'}">
+                            🎯 Bạn dự đoán: <b>${hasPick ? `${pick.h} - ${pick.a}` : 'Không dự đoán'}</b>
+                        </span>
+                        ${earned != null ? `<span class="font-bold ${earned > 0 ? 'text-emerald-400' : 'text-slate-500'}">+${earned}đ</span>` : ''}
+                    </span>
+                    ${crowd}
+                </div>` : '';
+
             return `
-            <div class="bg-slate-900/50 border border-slate-800 rounded-lg p-3 space-y-2 transition-all duration-300 hover:border-sky-700/50 hover:bg-slate-900/80 hover:shadow-lg hover:shadow-sky-950/30 hover:-translate-y-0.5 ${locked ? 'opacity-90' : ''}">
+            <div class="bg-slate-900/50 border border-slate-800 rounded-lg p-3 space-y-2 transition-all duration-300 hover:border-sky-700/50 hover:bg-slate-900/80 hover:shadow-lg hover:shadow-sky-950/30 hover:-translate-y-0.5 ${live ? 'border-rose-800/50' : ''}">
                 <div class="flex items-center justify-between gap-2 text-xs">
                     <span class="text-slate-500">${fmtKick(m)}</span>
-                    <span class="text-right">
-                        ${ft ? `<b class="text-white text-sm">KQ ${ft[0]}-${ft[1]}</b>` : (locked ? '<span class="text-amber-500">🔒 Đang đá/chờ KQ</span>' : '<span class="text-slate-600">Chưa đá</span>')}
-                        ${earned != null ? `<b class="ml-1.5 ${earned > 0 ? 'text-sky-400' : 'text-slate-500'}">+${earned}đ</b>` : ''}
-                    </span>
+                    <span class="text-right">${statusHtml}</span>
                 </div>
                 <div class="flex items-center gap-2 md:gap-3">
                     <div class="flex-1 min-w-0 text-right text-sm md:text-base font-medium truncate">${teamHtml(m.team1)}</div>
-                    <div class="flex items-center gap-1.5 md:gap-2 shrink-0">
-                        ${stepperHtml(m, 'h', locked)}
-                        <span class="text-slate-600 font-bold">:</span>
-                        ${stepperHtml(m, 'a', locked)}
-                    </div>
+                    ${centerHtml}
                     <div class="flex-1 min-w-0 text-sm md:text-base font-medium truncate">${teamHtml(m.team2)}</div>
                 </div>
-                ${crowd ? `<div>${crowd}</div>` : ''}
+                ${myPickHtml}
+                ${!locked && crowd ? `<div>${crowd}</div>` : ''}
             </div>`;
         }).join('');
 
@@ -1034,6 +1114,8 @@ function renderBracket() {
     sel.innerHTML = '<option value="">— Chưa chọn —</option>' + state.teams.map(t =>
         `<option value="${esc(t)}" ${state.myPred.champion === t ? 'selected' : ''}>${esc(t)}</option>`).join('');
     sel.disabled = championLocked;
+    // Chưa chốt => dropdown nhấp nháy vàng kêu gọi chọn; chốt rồi => tắt hiệu ứng
+    sel.classList.toggle('champ-select-attention', !championLocked);
     $('championLockNote').textContent = championLocked ? '🔒 Đã chốt, không thể thay đổi' : 'Chọn 1 LẦN DUY NHẤT trước vòng knockout (28/6/2026)';
 }
 
@@ -1060,6 +1142,7 @@ $('confirmChampionBtn').addEventListener('click', () => {
     scheduleSave();
     
     $('championSelect').disabled = true;
+    $('championSelect').classList.remove('champ-select-attention');
     $('championSelect').value = team;
     $('championLockNote').textContent = '🔒 Đã chốt, không thể thay đổi';
     $('championConfirmModal').classList.add('hidden');
