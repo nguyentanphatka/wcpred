@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Cup 2026 - Smartsales</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Cỡ chữ gốc responsive: mobile 16px, desktop 18px (mọi đơn vị rem scale theo) */
+        html { font-size: 16px; }
+        @media (min-width: 768px) { html { font-size: 17px; } }
+        @media (min-width: 1280px) { html { font-size: 18px; } }
+
+        /* Nền deep-navy với quầng sáng xanh vibrant (dark-first, glassmorphism-friendly) */
+        body {
+            background-color: #060a14 !important;
+            background-image:
+                radial-gradient(1000px 500px at 85% -10%, rgba(59, 130, 246, 0.14), transparent 60%),
+                radial-gradient(800px 450px at -10% 35%, rgba(14, 165, 233, 0.10), transparent 60%),
+                radial-gradient(600px 300px at 50% 110%, rgba(6, 182, 212, 0.08), transparent 60%);
+            background-attachment: fixed;
+        }
+        .glass { background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+
+        /* Neon xanh vibrant */
+        .neon-text { color: #7dd3fc; text-shadow: 0 0 6px rgba(56, 189, 248, 0.9), 0 0 22px rgba(56, 189, 248, 0.45); }
+        .neon-card { box-shadow: 0 0 10px rgba(56, 189, 248, 0.18), 0 0 32px rgba(56, 189, 248, 0.08); }
+        .neon-card:hover { box-shadow: 0 0 14px rgba(56, 189, 248, 0.3), 0 0 44px rgba(56, 189, 248, 0.14); }
+        .neon-gold { box-shadow: 0 0 12px rgba(245, 158, 11, 0.35), 0 0 36px rgba(245, 158, 11, 0.15); }
+        @keyframes neonPulse {
+            0%, 100% { box-shadow: 0 0 8px rgba(56, 189, 248, 0.3), 0 0 24px rgba(56, 189, 248, 0.12); }
+            50% { box-shadow: 0 0 16px rgba(56, 189, 248, 0.55), 0 0 44px rgba(56, 189, 248, 0.22); }
+        }
+        .neon-pulse { animation: neonPulse 2.4s ease-in-out infinite; }
+
+        /* Bracket: nhiệt độ màu tăng dần theo vòng — xanh lạnh → tím → cam → rực lửa */
+        .glow-r32 { border-color: rgba(56, 189, 248, 0.25) !important; box-shadow: 0 0 10px rgba(56, 189, 248, 0.15); }
+        .glow-r16 { border-color: rgba(34, 211, 238, 0.45) !important; box-shadow: 0 0 12px rgba(34, 211, 238, 0.28); }
+        .glow-qf  { border-color: rgba(167, 139, 250, 0.55) !important; box-shadow: 0 0 14px rgba(167, 139, 250, 0.35), 0 0 32px rgba(167, 139, 250, 0.12); }
+        @keyframes sfPulse {
+            0%, 100% { box-shadow: 0 0 12px rgba(251, 146, 60, 0.35), 0 0 30px rgba(251, 146, 60, 0.12); }
+            50% { box-shadow: 0 0 22px rgba(251, 146, 60, 0.6), 0 0 48px rgba(251, 146, 60, 0.25); }
+        }
+        .glow-sf { border-color: rgba(251, 146, 60, 0.65) !important; animation: sfPulse 2.2s ease-in-out infinite; }
+        @keyframes finalFire {
+            0%, 100% { box-shadow: 0 0 14px rgba(239, 68, 68, 0.45), 0 0 38px rgba(245, 158, 11, 0.25); }
+            33% { box-shadow: 0 0 24px rgba(245, 158, 11, 0.65), 0 0 56px rgba(239, 68, 68, 0.32); }
+            66% { box-shadow: 0 0 18px rgba(251, 146, 60, 0.6), 0 0 46px rgba(245, 158, 11, 0.38); }
+        }
+        .glow-final {
+            border-color: rgba(245, 158, 11, 0.75) !important;
+            background: linear-gradient(135deg, rgba(127, 29, 29, 0.4), rgba(120, 53, 15, 0.35), rgba(15, 23, 42, 0.6)) !important;
+            animation: finalFire 1.8s ease-in-out infinite;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Accordion group: nội dung trượt mượt khi mở, mũi tên xoay */
+        details > div { animation: fadeIn 0.35s ease; }
+        details summary::after { content: '▾'; color: #64748b; transition: transform 0.3s ease; }
+        details[open] summary::after { transform: rotate(180deg); color: #38bdf8; }
+        details summary::-webkit-details-marker { display: none; }
+
+        /* Hiệu ứng shimmer cho ngôi vô địch */
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .shimmer-gold {
+            background: linear-gradient(110deg, rgba(245,158,11,0) 35%, rgba(245,158,11,0.25) 50%, rgba(245,158,11,0) 65%);
+            background-size: 200% 100%;
+            animation: shimmer 3s linear infinite;
+        }
+
+        /* Bracket layout: columns flex, rows space evenly so parents align between children */
+        .bracket-scroll { overflow-x: auto; }
+        .bracket { display: flex; min-width: 1100px; gap: 12px; }
+        .bracket-col { display: flex; flex-direction: column; justify-content: space-around; gap: 10px; flex: 1; min-width: 0; }
+        .bracket-match { position: relative; }
+        .bracket-col:not(:last-child) .bracket-match::after {
+            content: ''; position: absolute; right: -8px; top: 50%; width: 8px; height: 2px;
+            background: linear-gradient(90deg, rgba(56, 189, 248, 0.25), #38bdf8);
+            box-shadow: 0 0 6px rgba(56, 189, 248, 0.55);
+        }
+
+        .chart-container { position: relative; width: 100%; height: 320px; }
+
+        /* Stepper chọn tỉ số kiểu pill tối giản */
+        .step-btn {
+            width: 2rem; height: 2.2rem; font-size: 1rem; font-weight: 700; color: #94a3b8;
+            transition: all 0.15s ease; user-select: none;
+        }
+        .step-btn:not(:disabled):hover { color: #fff; background: rgba(14, 165, 233, 0.35); }
+        .step-btn:not(:disabled):active { background: rgba(14, 165, 233, 0.6); transform: scale(0.92); }
+        .step-btn:disabled { opacity: 0.25; cursor: default; }
+        @keyframes popVal { 0% { transform: scale(1.5); color: #38bdf8; } 100% { transform: scale(1); } }
+        .pop { animation: popVal 0.25s ease; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-300 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="glass border-b border-white/10 p-4 sticky top-0 z-20 shadow-lg shadow-sky-950/20">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center space-x-2 md:space-x-3 min-w-0">
+                <span class="text-2xl md:text-3xl">🏆</span>
+                <div class="min-w-0">
+                    <h1 class="text-sm md:text-xl font-bold text-white tracking-wider truncate">WORLD CUP 2026 <span class="bg-gradient-to-r from-sky-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent">Smartsales</span></h1>
+                    <p class="text-xs text-slate-500 uppercase tracking-widest hidden md:block">Dự đoán đê ae ơi · 48 đội · 104 trận · 11/6 - 19/7/2026</p>
+                </div>
+            </div>
+            <div id="userBox" class="hidden items-center space-x-3 flex">
+                <img id="userAvatar" src="" class="w-9 h-9 rounded-full border-2 border-sky-500/60 hidden">
+                <div class="text-right">
+                    <p id="userName" class="text-sm font-bold text-white leading-tight">-</p>
+                    <p id="userPoints" class="text-xs text-amber-400 font-semibold leading-tight">0 điểm</p>
+                </div>
+                <button id="logoutBtn" class="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-md transition-colors text-slate-300">Đăng xuất</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Modal Xác nhận Nhà Vô Địch -->
+    <div id="championConfirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <div class="glass border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 class="text-xl font-bold text-white mb-2">Chốt kèo nhà vô địch?</h3>
+            <p class="text-sm text-slate-400 mb-6">Bạn đang chọn <span id="confirmTeamName" class="text-sky-400 font-bold"></span> làm Nhà Vô Địch. Sau khi xác nhận, lựa chọn này sẽ được khóa vĩnh viễn và không thể thay đổi.</p>
+            <div class="flex gap-3">
+                <button id="cancelChampionBtn" class="flex-1 py-2.5 rounded-lg bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700">Hủy</button>
+                <button id="confirmChampionBtn" class="flex-1 py-2.5 rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-500">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
+    <main class="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">
+
+        <!-- Status banner -->
+        <div id="statusBanner" class="bg-indigo-950/40 border border-indigo-800/50 rounded-xl p-3 mb-4 flex items-center justify-between text-sm">
+            <div class="flex items-center space-x-3">
+                <div class="w-4 h-4 border-2 border-indigo-400/30 border-t-indigo-400 rounded-full animate-spin" id="statusSpinner"></div>
+                <span class="font-medium text-indigo-200" id="statusText">Đang tải lịch thi đấu World Cup 2026...</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs bg-indigo-900/50 text-indigo-300 px-2 py-1 rounded" id="matchCountBadge">0 trận</span>
+                <button id="refreshBtn" class="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300" title="Tải lại kết quả mới nhất">⟳ Cập nhật KQ</button>
+            </div>
+        </div>
+
+        <!-- Demo mode warning -->
+        <div id="demoBanner" class="hidden bg-amber-950/40 border border-amber-700/50 rounded-xl p-3 mb-4 text-sm text-amber-300">
+            ⚠️ <strong>Chế độ DEMO (localStorage):</strong> chưa cấu hình Firebase nên dữ liệu chỉ lưu trên trình duyệt này. Điền <code class="bg-slate-800 px-1 rounded">firebaseConfig</code> trong file và làm theo README để cả nhóm dùng chung.
+        </div>
+
+        <!-- LOGIN GATE -->
+        <section id="loginSection" class="hidden max-w-md mx-auto glass border border-white/10 rounded-2xl p-8 shadow-2xl mt-8">
+            <div class="text-center mb-6">
+                <div class="text-5xl mb-2">⚽</div>
+                <h2 class="text-2xl font-bold text-white">Vào Bang Hội</h2>
+                <p class="text-sm text-slate-400 mt-1">1 Mật khẩu chung, Username tự chọn</p>
+            </div>
+
+            <div id="loginFormBox" class="space-y-4">
+                <input id="inpUsername" type="text" placeholder="Tên đăng nhập (viết liền không dấu)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors">
+                <input id="inpPassword" type="password" placeholder="Mật khẩu Bang Hội" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors">
+                <input id="inpDisplayName" type="text" placeholder="Tên hiển thị (Bắt buộc nếu là lần đầu đăng nhập)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors">
+                
+                <button id="masterLoginBtn" class="w-full py-3 mt-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg transition-colors flex justify-center items-center gap-2">
+                    <span id="masterLoginText">Vào chơi ngay</span>
+                    <div id="masterLoginLoader" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin hidden"></div>
+                </button>
+            </div>
+
+            <p id="loginError" class="hidden mt-4 text-xs text-rose-400 bg-rose-950/40 border border-rose-800/50 rounded-lg p-3"></p>
+        </section>
+
+        <!-- APP -->
+        <section id="appSection" class="hidden">
+
+            <!-- 2 trận sắp diễn ra gần nhất -->
+            <div id="upcomingContainer" class="mb-5"></div>
+
+            <!-- Tabs -->
+            <div class="flex flex-wrap glass border border-white/10 rounded-xl overflow-hidden mb-5">
+                <button class="tab-btn flex-1 min-w-[45%] md:min-w-[120px] py-3 md:py-3.5 text-center text-sm md:text-base font-semibold text-slate-400 border-b-2 border-transparent hover:text-white hover:bg-slate-800 transition-colors" data-target="tab-squads">👥 Đội hình</button>
+                <button class="tab-btn active flex-1 min-w-[45%] md:min-w-[120px] py-3 md:py-3.5 text-center text-sm md:text-base font-semibold text-sky-400 border-b-2 border-sky-400 hover:bg-slate-800 transition-colors" data-target="tab-groups">📋 Vòng bảng</button>
+                <button class="tab-btn flex-1 min-w-[45%] md:min-w-[120px] py-3 md:py-3.5 text-center text-sm md:text-base font-semibold text-slate-400 border-b-2 border-transparent hover:text-white hover:bg-slate-800 transition-colors" data-target="tab-bracket">🌳 Bracket Knockout</button>
+                <button class="tab-btn flex-1 min-w-[45%] md:min-w-[120px] py-3 md:py-3.5 text-center text-sm md:text-base font-semibold text-slate-400 border-b-2 border-transparent hover:text-white hover:bg-slate-800 transition-colors" data-target="tab-leaderboard">🏅 Bảng xếp hạng</button>
+                <button class="tab-btn flex-1 min-w-[45%] md:min-w-[120px] py-3 md:py-3.5 text-center text-sm md:text-base font-semibold text-slate-400 border-b-2 border-transparent hover:text-white hover:bg-slate-800 transition-colors" data-target="tab-stats">📊 Thống kê nhóm</button>
+            </div>
+
+            <!-- TAB: SQUADS -->
+            <div id="tab-squads" class="tab-content space-y-4">
+                <div class="glass border border-white/10 rounded-xl p-3.5 text-sm text-slate-400">
+                    💡 Bấm vào <b class="text-sky-300">tên đội</b> trong bảng xếp hạng của từng bảng đấu, hoặc chọn bên dưới để xem danh sách 26 cầu thủ đăng ký.
+                </div>
+                <div id="squadChips" class="flex flex-wrap gap-1.5"></div>
+                <div id="squadDetail"></div>
+            </div>
+
+            <!-- TAB: GROUPS -->
+            <div id="tab-groups" class="tab-content active space-y-4">
+                <div class="glass border border-white/10 rounded-xl p-3.5 text-sm flex flex-wrap items-center gap-2">
+                    <span class="bg-sky-500/15 text-sky-300 border border-sky-500/30 rounded-full px-3 py-1 text-xs font-bold">🎯 Đúng tỉ số +3đ</span>
+                    <span class="bg-white/5 text-slate-300 border border-white/10 rounded-full px-3 py-1 text-xs font-bold">✅ Đúng thắng/thua/hòa +1đ</span>
+                    <span class="text-xs text-slate-500 ml-auto">🔒 Khóa trước 1h bóng lăn · 🕐 Giờ theo múi giờ máy bạn</span>
+                </div>
+                <div id="groupsContainer" class="space-y-4"></div>
+            </div>
+
+            <!-- TAB: BRACKET -->
+            <div id="tab-bracket" class="tab-content space-y-5">
+                <!-- Champion pick -->
+                <div class="shimmer-gold bg-gradient-to-r from-amber-950/40 to-slate-800/60 border border-amber-700/40 rounded-xl p-4 flex flex-wrap items-center gap-4 transition-shadow hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]">
+                    <span class="text-3xl">👑</span>
+                    <div class="flex-1 min-w-[200px]">
+                        <p class="text-sm font-bold text-amber-400">Nhà Vô Địch của bạn (+15đ nếu đúng)</p>
+                        <p class="text-xs text-slate-500" id="championLockNote">Chọn 1 LẦN DUY NHẤT trước vòng knockout (28/6)</p>
+                    </div>
+                    <select id="championSelect" class="w-full md:w-auto md:min-w-[200px] bg-slate-900 border border-amber-700/50 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-amber-500"></select>
+                </div>
+
+                <div class="glass border border-white/10 rounded-xl p-3.5 text-sm flex flex-wrap items-center gap-2">
+                    <span class="bg-sky-500/15 text-sky-300 border border-sky-500/30 rounded-full px-3 py-1 text-xs font-bold">✔ Đoán đúng đội đi tiếp +2đ</span>
+                    <span class="bg-white/5 text-slate-300 border border-white/10 rounded-full px-3 py-1 text-xs font-bold">Mọi vòng knockout điểm như nhau</span>
+                    <span class="bg-amber-500/15 text-amber-300 border border-amber-500/30 rounded-full px-3 py-1 text-xs font-bold">👑 Đúng Nhà Vô Địch +15đ</span>
+                    <span class="text-xs text-slate-500 ml-auto">Chỉ chọn được khi đã biết 2 đội</span>
+                </div>
+
+                <p class="md:hidden text-center text-xs text-sky-400/80 animate-pulse">👈 Vuốt ngang để xem tới 🔥 Chung kết 👉</p>
+                <div class="bracket-scroll glass border border-white/10 rounded-xl p-3 md:p-4">
+                    <div class="flex text-xs font-bold uppercase tracking-widest mb-4" style="min-width:1100px">
+                        <div class="flex-1 text-center" style="color:#7dd3fc; text-shadow:0 0 8px rgba(56,189,248,.7)">❄️ Vòng 1/16</div>
+                        <div class="flex-1 text-center" style="color:#67e8f9; text-shadow:0 0 8px rgba(34,211,238,.7)">Vòng 1/8</div>
+                        <div class="flex-1 text-center" style="color:#c4b5fd; text-shadow:0 0 9px rgba(167,139,250,.75)">Tứ kết</div>
+                        <div class="flex-1 text-center" style="color:#fdba74; text-shadow:0 0 10px rgba(251,146,60,.8)">Bán kết</div>
+                        <div class="flex-1 text-center" style="color:#fbbf24; text-shadow:0 0 8px rgba(239,68,68,.9), 0 0 24px rgba(245,158,11,.5)">🔥 Chung kết</div>
+                    </div>
+                    <div id="bracketContainer" class="bracket"></div>
+                </div>
+
+                <div id="thirdPlaceContainer" class="max-w-md"></div>
+            </div>
+
+            <!-- TAB: LEADERBOARD -->
+            <div id="tab-leaderboard" class="tab-content space-y-5">
+                <div class="glass rounded-xl border border-sky-500/20 neon-card overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead class="bg-sky-500/[0.07] text-xs uppercase tracking-wider text-sky-300/70">
+                            <tr>
+                                <th class="px-2 md:px-4 py-3 text-left">#</th>
+                                <th class="px-2 md:px-4 py-3 text-left">Người chơi</th>
+                                <th class="px-4 py-3 text-center hidden sm:table-cell">Vòng bảng</th>
+                                <th class="px-4 py-3 text-center hidden sm:table-cell">Knockout</th>
+                                <th class="px-4 py-3 text-center hidden sm:table-cell">Bonus VĐ</th>
+                                <th class="px-2 md:px-4 py-3 text-right">Tổng điểm</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboardBody"></tbody>
+                    </table>
+                </div>
+                <div class="glass rounded-xl p-5 border border-sky-500/20 neon-card">
+                    <h3 class="text-lg font-bold text-white mb-1">📈 Cuộc đua điểm số theo thời gian</h3>
+                    <p class="text-xs text-slate-500 mb-4">Điểm tích lũy của từng người sau mỗi ngày thi đấu (top 8)</p>
+                    <div class="chart-container"><canvas id="raceChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- TAB: STATS -->
+            <div id="tab-stats" class="tab-content space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="statsSummaryCards"></div>
+                <div class="glass rounded-xl p-5 border border-sky-500/20 neon-card">
+                    <h3 class="text-lg font-bold text-white mb-3">👑 Cả nhóm chọn ai vô địch?</h3>
+                    <div id="championStats" class="space-y-2"></div>
+                </div>
+                <div class="glass rounded-xl p-5 border border-sky-500/20 neon-card">
+                    <h3 class="text-lg font-bold text-white mb-1">🔍 Soi dự đoán từng trận</h3>
+                    <p class="text-xs text-slate-500 mb-3">Chọn một trận để xem tất cả mọi người đã dự đoán gì và được bao nhiêu điểm</p>
+                    <select id="statsMatchSelect" class="w-full md:w-auto md:min-w-[300px] bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-sky-500 mb-4"></select>
+                    <div id="statsMatchDetail"></div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <footer class="bg-slate-950 py-5 text-center border-t border-slate-800 mt-auto">
+        <p class="text-xs text-slate-500">WC 2026 Predict Arena · Dữ liệu lịch & kết quả: <a class="text-indigo-400 hover:underline" href="https://github.com/openfootball/worldcup.json" target="_blank">openfootball/worldcup.json</a> · Backend: Firebase</p>
+    </footer>
+
+<script type="module">
+// ============================================================
+// FIREBASE CONFIG — dán config từ Firebase Console vào đây.
+// Để TRỐNG apiKey => app chạy chế độ DEMO bằng localStorage.
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyAhKTRo1dVODfObHDu12q9cZ4yBjoTT204",
+  authDomain: "funnywc-e8fd4.firebaseapp.com",
+  projectId: "funnywc-e8fd4",
+  storageBucket: "funnywc-e8fd4.firebasestorage.app",
+  messagingSenderId: "503112406718",
+  appId: "1:503112406718:web:4a35ea3e6fb9f8cfd5b0ef",
+  measurementId: "G-1ZF0Y6FDR8"
+};
+
+const DATA_URL = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json';
+const SQUADS_URL = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.squads.json';
+// File squads dùng tên dài, file lịch dùng tên ngắn — quy về tên trong file lịch
+const TEAM_ALIAS = { 'United States': 'USA', 'Bosnia and Herzegovina': 'Bosnia & Herzegovina' };
+const KO_START = new Date('2026-06-28T00:00:00Z'); // khóa chọn nhà vô địch
+
+const KO_POINT = 2; // đoán đúng đội đi tiếp: mọi vòng knockout tính điểm như nhau
+const CHAMPION_BONUS = 15;
+const ROUND_VI = { 'Round of 32': 'Vòng 1/16', 'Round of 16': 'Vòng 1/8', 'Quarter-final': 'Tứ kết', 'Semi-final': 'Bán kết', 'Match for third place': 'Tranh hạng 3', 'Final': 'Chung kết' };
+
+// Bracket topology (num -> 2 trận nguồn), chốt theo lịch FIFA chính thức
+const BRACKET_FEEDS = { 89:[74,77], 90:[73,75], 91:[76,78], 92:[79,80], 93:[83,84], 94:[81,82], 95:[86,88], 96:[85,87], 97:[89,90], 98:[93,94], 99:[91,92], 100:[95,96], 101:[97,98], 102:[99,100], 103:[101,102], 104:[101,102] };
+// Thứ tự hiển thị từng cột để các nhánh thẳng hàng với nhau
+const BRACKET_COLS = [
+    [74,77,73,75,83,84,81,82,76,78,79,80,86,88,85,87],
+    [89,90,93,94,91,92,95,96],
+    [97,98,99,100],
+    [101,102],
+    [104]
+];
+
+const FLAGS = {
+    'Algeria':'DZ','Argentina':'AR','Australia':'AU','Austria':'AT','Belgium':'BE','Bosnia & Herzegovina':'BA','Brazil':'BR','Canada':'CA','Cape Verde':'CV','Colombia':'CO','Croatia':'HR','Curaçao':'CW','Czech Republic':'CZ','DR Congo':'CD','Ecuador':'EC','Egypt':'EG','France':'FR','Germany':'DE','Ghana':'GH','Haiti':'HT','Iran':'IR','Iraq':'IQ','Ivory Coast':'CI','Japan':'JP','Jordan':'JO','Mexico':'MX','Morocco':'MA','Netherlands':'NL','New Zealand':'NZ','Norway':'NO','Panama':'PA','Paraguay':'PY','Portugal':'PT','Qatar':'QA','Saudi Arabia':'SA','Senegal':'SN','South Africa':'ZA','South Korea':'KR','Spain':'ES','Sweden':'SE','Switzerland':'CH','Tunisia':'TN','Turkey':'TR','Uruguay':'UY','USA':'US','Uzbekistan':'UZ'
+};
+// Dùng ảnh cờ flagcdn.com vì Windows không render emoji cờ quốc gia
+function flagCode(team) {
+    if (team === 'England') return 'gb-eng';
+    if (team === 'Scotland') return 'gb-sct';
+    return (FLAGS[team] || '').toLowerCase();
+}
+function flagOf(team) {
+    const code = flagCode(team);
+    if (!code) return '⚽';
+    return `<img src="https://flagcdn.com/w40/${code}.png" alt="" class="inline-block w-6 h-4 object-cover rounded-sm align-[-3px] mr-1 shadow-sm ring-1 ring-white/10">`;
+}
+
+// ===================== STATE =====================
+const state = {
+    matches: [],          // normalized: {key,num,round,group,date,time,kickoff,team1,team2,score}
+    teams: [],            // 48 team names
+    me: null,             // {uid, name, photo}
+    myPred: { picks: {}, champion: '' },
+    allPreds: {},         // uid -> {name, photo, champion, picks}
+    raceChart: null,
+    saveTimer: null,
+    lastInteract: 0,      // chống re-render khi người dùng đang thao tác (gây giật)
+    squads: {},           // teamName -> [{number,pos,name,date_of_birth}]
+    squadTeam: ''         // đội đang xem trong tab Đội hình
+};
+const interacting = () => Date.now() - state.lastInteract < 2500;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function isRealTeam(name) { return state.teams.includes(name); }
+function matchKey(m) { return m.num ? 'm' + m.num : `g:${m.group}:${m.team1}|${m.team2}`; }
+function parseKickoff(m) {
+    const t = /(\d{1,2}):(\d{2}) UTC([+-]\d+)/.exec(m.time || '');
+    if (!t) return new Date(m.date + 'T12:00:00Z');
+    const off = t[3].replace(/([+-])(\d)$/, '$10$2') + ':00';
+    return new Date(`${m.date}T${t[1].padStart(2,'0')}:${t[2]}:00${off}`);
+}
+function isLocked(m) { return Date.now() >= m.kickoff.getTime() - 3600000; } // Khóa cứng trước 1 tiếng (3,600,000 ms)
+
+// Đội thắng thực tế của 1 trận knockout (ưu tiên penalty > hiệp phụ > 90')
+function realWinner(m) {
+    const s = m.score || {};
+    const final = s.p || s.et || s.ft;
+    if (!final) return null;
+    if (final[0] === final[1]) return null;
+    return final[0] > final[1] ? m.team1 : m.team2;
+}
+function ftScore(m) { return m.score?.ft || null; }
+
+// ===================== SCORING =====================
+function groupPoints(pick, m) {
+    const ft = ftScore(m);
+    if (!ft || pick == null || pick.h == null || pick.a == null) return null;
+    const [h, a] = ft;
+    if (pick.h === h && pick.a === a) return 3;
+    if (Math.sign(pick.h - pick.a) === Math.sign(h - a)) return 1;
+    return 0;
+}
+function koPoints(pick, m) {
+    const w = realWinner(m);
+    if (!w || !pick?.w) return null;
+    return pick.w === w ? KO_POINT : 0;
+}
+function matchEarned(pred, m) {
+    const pick = pred?.picks?.[m.key];
+    return m.group ? groupPoints(pick, m) : koPoints(pick, m);
+}
+function userTotals(pred) {
+    let group = 0, ko = 0;
+    for (const m of state.matches) {
+        const p = matchEarned(pred, m);
+        if (p == null) continue;
+        if (m.group) group += p; else ko += p;
+    }
+    let bonus = 0;
+    const finalMatch = state.matches.find(m => m.round === 'Final');
+    if (finalMatch && pred?.champion && realWinner(finalMatch) === pred.champion) bonus = CHAMPION_BONUS;
+    return { group, ko, bonus, total: group + ko + bonus };
+}
+
+// ===================== STORE (Firebase | Demo) =====================
+const useFirebase = !!firebaseConfig.apiKey;
+let store;
+
+if (useFirebase) {
+    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+    const authMod = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+    const fsMod = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const app = initializeApp(firebaseConfig);
+    const auth = authMod.getAuth(app);
+    const db = fsMod.getFirestore(app);
+
+    // FIX 1: Ép Firebase dùng LocalStorage thay vì IndexedDB mặc định. 
+    // IndexedDB hay bị dọn rác khi chạy trong iframe/preview (làm bay màu session lúc F5).
+    try {
+        await authMod.setPersistence(auth, authMod.browserLocalPersistence);
+    } catch (e) {
+        console.warn('Cảnh báo Persistence (có thể do trình duyệt block):', e);
+    }
+
+    store = {
+        init(onUser, onAllPreds) {
+            authMod.onAuthStateChanged(auth, async u => {
+                if (u) {
+                    const dName = u.displayName || (u.email ? u.email.split('@')[0] : 'User');
+                    onUser({ uid: u.uid, name: dName, photo: u.photoURL || '' });
+                } else {
+                    // FIX MẠNH TAY: Luồng Auto-login chống văng khi F5
+                    // Trình duyệt gắt gao xóa cache Firebase? Ta tự đăng nhập lại ngầm luôn!
+                    const savedUser = localStorage.getItem('arena_username');
+                    if (savedUser) {
+                        try {
+                            const fakeEmail = `${savedUser}@banghoi.local`;
+                            const fakePass = `Arena@${savedUser}2026!`;
+                            await authMod.signInWithEmailAndPassword(auth, fakeEmail, fakePass);
+                            // Thành công nó sẽ tự nảy lại onAuthStateChanged có user
+                        } catch (e) {
+                            console.warn("Auto-login ngầm thất bại:", e);
+                            localStorage.removeItem('arena_username');
+                            onUser(null);
+                        }
+                    } else {
+                        onUser(null); // Không có dấu vết cũ thì thôi, bắt login tay
+                    }
+                }
+            });
+            fsMod.onSnapshot(fsMod.collection(db, 'predictions'), snap => {
+                const all = {};
+                snap.forEach(d => { all[d.id] = d.data(); });
+                onAllPreds(all);
+            }, err => {
+                console.error('Firestore listen error:', err);
+                // Bắt thẳng mặt lỗi Rules
+                if (err.code === 'permission-denied') {
+                    alert('⚠️ CẢNH BÁO TỪ TIỂU ĐỆ:\nĐại ca chưa mở Security Rules cho Database rồi! Vô tab Rules sửa lại ngay để app lưu được data.');
+                }
+            });
+        },
+        async loginMaster(username, pass, name) {
+            try {
+                const configSnap = await fsMod.getDoc(fsMod.doc(db, 'config', 'settings'));
+                if (configSnap.exists()) {
+                    const master = configSnap.data().masterPassword;
+                    if (master && pass !== master) throw new Error("Sai Mật khẩu Bang Hội!");
+                }
+            } catch(e) {
+                if (e.message === "Sai Mật khẩu Bang Hội!") throw e;
+                console.warn("Bỏ qua check pass (chưa config rule/database):", e);
+            }
+
+            const fakeEmail = `${username}@banghoi.local`;
+            const fakePass = `Arena@${username}2026!`;
+
+            try {
+                // Ưu tiên thử Đăng nhập trước (bỏ qua ô Tên hiển thị)
+                await authMod.signInWithEmailAndPassword(auth, fakeEmail, fakePass);
+            } catch (authErr) {
+                // Thất bại (nghĩa là user chưa tồn tại) -> Chuyển sang luồng Tạo mới
+                if (!name) {
+                    throw new Error("Tài khoản mới (lần đầu): Bắt buộc phải nhập Tên hiển thị!");
+                }
+                const cred = await authMod.createUserWithEmailAndPassword(auth, fakeEmail, fakePass);
+                await authMod.updateProfile(cred.user, { displayName: name });
+                
+                // Mẹo nhỏ: Ép UI nhận tên hiển thị mới ngay lập tức tránh race condition
+                if (state.me) state.me.name = name;
+                document.getElementById('userName').textContent = name;
+            }
+
+            // Ghi nhớ cái tên để F5 còn tự auto-login
+            localStorage.setItem('arena_username', username);
+        },
+        async logout() { 
+            localStorage.removeItem('arena_username');
+            await authMod.signOut(auth); 
+        },
+        async save(uid, data) { 
+            // FIX 2: Thêm { merge: true } để an toàn, không overwrite mất data nếu có update chéo
+            await fsMod.setDoc(fsMod.doc(db, 'predictions', uid), data, { merge: true }); 
+        }
+    };
+} else {
+    // DEMO: mô phỏng nhiều user trên localStorage, cùng interface với Firebase store
+    const LS_ALL = 'wc26_demo_predictions', LS_ME = 'wc26_demo_currentUser';
+    let userCb = null, predsCb = null;
+    const readAll = () => JSON.parse(localStorage.getItem(LS_ALL) || '{}');
+    store = {
+        init(onUser, onAllPreds) {
+            userCb = onUser; predsCb = onAllPreds;
+            const me = localStorage.getItem(LS_ME);
+            onUser(me ? JSON.parse(me) : null);
+            onAllPreds(readAll());
+        },
+        async loginMaster(username, pass, name) {
+            if (!pass) throw new Error("Nhập mật khẩu (Demo không check đúng/sai nhưng phải nhập)!");
+            const uid = 'demo_' + username.toLowerCase().replace(/\s+/g, '_');
+            
+            const all = readAll();
+            let finalName = name;
+            
+            if (all[uid] && all[uid].name) {
+                // Đã có tài khoản thì lấy tên cũ, bỏ qua ô input Tên hiển thị
+                finalName = all[uid].name; 
+            } else {
+                // Chưa có tài khoản thì bắt buộc nhập
+                if (!name) throw new Error("Tài khoản mới (lần đầu): Bắt buộc phải nhập Tên hiển thị!");
+            }
+
+            const me = { uid, name: finalName, photo: '' };
+            localStorage.setItem(LS_ME, JSON.stringify(me));
+            userCb(me);
+        },
+        async logout() { localStorage.removeItem(LS_ME); userCb(null); },
+        async save(uid, data) {
+            const all = readAll();
+            all[uid] = data;
+            localStorage.setItem(LS_ALL, JSON.stringify(all));
+            predsCb(all);
+        }
+    };
+}
+
+// ===================== DATA LOADING =====================
+async function loadMatches() {
+    $('statusSpinner').classList.remove('hidden');
+    $('statusText').textContent = 'Đang tải lịch thi đấu & kết quả World Cup 2026...';
+    try {
+        const res = await fetch(DATA_URL, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const teamSet = new Set();
+        state.matches = data.matches.map(m => {
+            if (m.group) { teamSet.add(m.team1); teamSet.add(m.team2); }
+            const norm = { ...m, kickoff: parseKickoff(m) };
+            norm.key = matchKey(norm);
+            return norm;
+        });
+        state.teams = [...teamSet].sort();
+        const done = state.matches.filter(m => ftScore(m)).length;
+        $('statusText').textContent = `Đã tải ${state.matches.length} trận · ${done} trận có kết quả · nguồn cập nhật ~hằng ngày`;
+        $('matchCountBadge').textContent = `${state.matches.length} trận`;
+        $('statusSpinner').classList.add('hidden');
+        $('statusBanner').classList.add('bg-sky-950/40', 'border-sky-800/50');
+        return true;
+    } catch (e) {
+        console.error(e);
+        $('statusSpinner').classList.add('hidden');
+        $('statusText').textContent = '❌ Không tải được dữ liệu trận đấu. Kiểm tra mạng rồi bấm "Cập nhật KQ".';
+        return false;
+    }
+}
+
+async function loadSquads() {
+    try {
+        const res = await fetch(SQUADS_URL, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        state.squads = {};
+        data.forEach(t => { state.squads[TEAM_ALIAS[t.name] || t.name] = t.players || []; });
+    } catch (e) {
+        console.error('Không tải được đội hình:', e);
+    }
+}
+
+// ===================== SAVE (debounced) =====================
+function scheduleSave() {
+    if (!state.me) return;
+    clearTimeout(state.saveTimer);
+    state.saveTimer = setTimeout(async () => {
+        try {
+            // UI chớp báo hiệu đang lưu
+            $('statusSpinner').classList.remove('hidden');
+            $('statusText').textContent = 'Đang đồng bộ dữ liệu lên máy chủ...';
+
+            await store.save(state.me.uid, {
+                name: state.me.name,
+                photo: state.me.photo || '',
+                champion: state.myPred.champion || '',
+                picks: state.myPred.picks,
+                updatedAt: new Date().toISOString()
+            });
+
+            $('statusSpinner').classList.add('hidden');
+            $('statusText').textContent = '✅ Đã lưu dự đoán an toàn!';
+        } catch (e) {
+            console.error('Save failed:', e);
+            $('statusSpinner').classList.add('hidden');
+            $('statusText').textContent = '❌ Lỗi lưu dữ liệu: ' + e.message;
+            
+            // Cảnh báo thẳng mặt nếu đại ca quên Rules
+            if(e.code === 'permission-denied') {
+                alert('⚠️ ĐẠI CA QUÊN MỞ LUẬT BẢO MẬT (SECURITY RULES) TRÊN FIRESTORE RỒI!\n\nVào Firebase Console -> Firestore Database -> tab Rules và dán code đệ đã gửi để lưu được data nhé.');
+            }
+        }
+    }, 800);
+}
+
+function setPick(key, pick) {
+    state.myPred.picks[key] = pick;
+    scheduleSave();
+}
+
+// ===================== RENDER: GROUPS =====================
+// Giờ đấu hiển thị theo múi giờ máy người xem
+function fmtKick(m) {
+    const d = m.kickoff;
+    const day = d.toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' });
+    const time = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    return `${day} · <b class="text-sky-300">${time}</b>`;
+}
+function countdownTxt(m) {
+    const s = Math.max(0, (m.kickoff.getTime() - Date.now()) / 1000);
+    const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), mi = Math.floor(s % 3600 / 60);
+    return d ? `${d} ngày ${h}g` : h ? `${h}g ${mi}p` : `${mi} phút`;
+}
+
+// Stepper −/+ chọn tỉ số (update DOM tại chỗ, không re-render => không giật)
+function stepperHtml(m, side, locked) {
+    const pick = state.myPred.picks[m.key] || {};
+    const val = pick[side];
+    return `
+    <div class="flex items-center rounded-full overflow-hidden ${locked ? 'bg-slate-900/40 border border-slate-800' : 'bg-slate-900/80 border border-sky-700/40 shadow-inner shadow-sky-950/50'}">
+        <button class="step-btn" data-key="${esc(m.key)}" data-side="${side}" data-d="-1" ${locked ? 'disabled' : ''}>−</button>
+        <span class="w-8 text-center text-base font-extrabold ${val == null ? 'text-slate-600' : 'text-white'}" data-sv="${esc(m.key)}|${side}">${val ?? '·'}</span>
+        <button class="step-btn" data-key="${esc(m.key)}" data-side="${side}" data-d="1" ${locked ? 'disabled' : ''}>+</button>
+    </div>`;
+}
+
+// clickable=true chỉ dùng ở bảng xếp hạng — tên đội tại các dòng chọn tỉ số
+// KHÔNG gắn link để tránh bấm nhầm chuyển trang khi đang nhập dự đoán
+function teamHtml(name, extra = '', clickable = false) {
+    if (!isRealTeam(name)) return `<span class="text-slate-500 italic text-xs">🏷 ${esc(name)}</span>`;
+    if (clickable) {
+        return `<span class="team-link cursor-pointer underline decoration-dotted decoration-sky-500/50 underline-offset-4 hover:text-sky-300 transition-colors ${extra}" data-team="${esc(name)}" title="Xem đội hình ${esc(name)}">${flagOf(name)} ${esc(name)}</span>`;
+    }
+    return `<span class="${extra}">${flagOf(name)} ${esc(name)}</span>`;
+}
+
+// ===================== RENDER: SQUADS (Đội hình) =====================
+function ageOf(dob) {
+    if (!dob) return '?';
+    const d = new Date(dob), t = new Date();
+    let a = t.getFullYear() - d.getFullYear();
+    if (t.getMonth() < d.getMonth() || (t.getMonth() === d.getMonth() && t.getDate() < d.getDate())) a--;
+    return a;
+}
+
+const POS_VI = { GK: '🧤 Thủ môn', DF: '🛡️ Hậu vệ', MF: '⚙️ Tiền vệ', FW: '⚡ Tiền đạo' };
+
+function renderSquads() {
+    const chips = $('squadChips'), detail = $('squadDetail');
+    if (!chips) return;
+    const teams = Object.keys(state.squads).sort();
+    if (!teams.length) {
+        chips.innerHTML = '';
+        detail.innerHTML = '<p class="text-sm text-slate-500 py-6 text-center">Chưa tải được dữ liệu đội hình. Bấm "⟳ Cập nhật KQ" để thử lại.</p>';
+        return;
+    }
+    chips.innerHTML = teams.map(t => `
+        <button class="squad-chip flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200
+            ${t === state.squadTeam ? 'bg-sky-500/20 border border-sky-400/70 text-white shadow-[0_0_10px_rgba(56,189,248,0.35)]' : 'bg-white/[0.04] border border-white/10 text-slate-300 hover:border-sky-400/50 hover:text-white'}"
+            data-team="${esc(t)}">${flagOf(t)} ${esc(t)}</button>`).join('');
+
+    const team = state.squadTeam;
+    const players = state.squads[team];
+    if (!team || !players) {
+        detail.innerHTML = '<p class="text-sm text-slate-500 py-6 text-center">👆 Chọn một đội để xem danh sách cầu thủ</p>';
+        return;
+    }
+    const grp = state.matches.find(m => m.group && (m.team1 === team || m.team2 === team))?.group || '';
+    const byPos = { GK: [], DF: [], MF: [], FW: [] };
+    players.forEach(p => (byPos[p.pos] || (byPos[p.pos] = [])).push(p));
+
+    detail.innerHTML = `
+    <div class="glass border border-sky-500/25 neon-card rounded-xl p-4 md:p-5 mb-4 flex flex-wrap items-center gap-3">
+        <span class="text-2xl">${flagOf(team)}</span>
+        <div class="flex-1">
+            <h3 class="text-xl md:text-2xl font-extrabold text-white">${esc(team)}</h3>
+            <p class="text-xs text-slate-500">${esc(grp)} · ${players.length} cầu thủ đăng ký · Tuổi TB: <b class="text-sky-300">${(players.reduce((s, p) => s + ageOf(p.date_of_birth), 0) / players.length).toFixed(1)}</b></p>
+        </div>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        ${Object.entries(byPos).filter(([, list]) => list.length).map(([pos, list]) => `
+        <div class="glass border border-white/10 neon-card rounded-xl overflow-hidden">
+            <div class="px-4 py-2.5 bg-sky-500/[0.08] border-b border-white/10 text-sm font-bold neon-text">${POS_VI[pos] || pos} <span class="text-slate-500 font-normal">(${list.length})</span></div>
+            <div class="divide-y divide-white/5">
+                ${list.sort((a, b) => (a.number || 99) - (b.number || 99)).map(p => `
+                <div class="px-4 py-2 flex items-center gap-3 hover:bg-sky-500/[0.06] transition-colors">
+                    <span class="w-7 h-7 shrink-0 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-300 text-xs font-extrabold flex items-center justify-center">${p.number ?? '–'}</span>
+                    <span class="flex-1 min-w-0 text-sm font-medium text-white truncate">${esc(p.name)}</span>
+                    <span class="text-xs text-slate-500 shrink-0">${ageOf(p.date_of_birth)} tuổi</span>
+                </div>`).join('')}
+            </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function showSquad(team) {
+    state.squadTeam = team;
+    activateTab('tab-squads');
+    renderSquads();
+    $('squadDetail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Click tên đội ở bất kỳ đâu / chip đội -> mở tab Đội hình
+document.addEventListener('click', e => {
+    const el = e.target.closest('.team-link, .squad-chip');
+    if (!el) return;
+    showSquad(el.dataset.team);
+});
+
+function computeStandings(groupName) {
+    const rows = {};
+    for (const m of state.matches) {
+        if (m.group !== groupName) continue;
+        for (const t of [m.team1, m.team2]) rows[t] ??= { team: t, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+        const ft = ftScore(m);
+        if (!ft) continue;
+        const [g1, g2] = ft;
+        const r1 = rows[m.team1], r2 = rows[m.team2];
+        r1.p++; r2.p++; r1.gf += g1; r1.ga += g2; r2.gf += g2; r2.ga += g1;
+        if (g1 > g2) { r1.w++; r1.pts += 3; r2.l++; }
+        else if (g1 < g2) { r2.w++; r2.pts += 3; r1.l++; }
+        else { r1.d++; r2.d++; r1.pts++; r2.pts++; }
+    }
+    return Object.values(rows).sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf);
+}
+
+function pickCountsFor(m) {
+    // Đếm cả nhóm chọn gì cho 1 trận (vòng bảng: kết quả 1/X/2; KO: đội thắng)
+    const counts = {};
+    let total = 0;
+    for (const pred of Object.values(state.allPreds)) {
+        const pick = pred.picks?.[m.key];
+        if (!pick) continue;
+        let label;
+        if (m.group) {
+            if (pick.h == null) continue;
+            label = pick.h > pick.a ? m.team1 : pick.h < pick.a ? m.team2 : 'Hòa';
+        } else {
+            if (!pick.w) continue;
+            label = pick.w;
+        }
+        counts[label] = (counts[label] || 0) + 1;
+        total++;
+    }
+    return { counts, total };
+}
+
+function renderGroups() {
+    const container = $('groupsContainer');
+    const groups = [...new Set(state.matches.filter(m => m.group).map(m => m.group))];
+    // Giữ nguyên các group đang mở để re-render không làm nhảy giao diện
+    const prevOpen = [...container.querySelectorAll('details[open]')].map(d => d.dataset.g);
+    const openSet = new Set(prevOpen.length ? prevOpen : ['Group A']);
+    container.innerHTML = groups.map(g => {
+        const matches = state.matches.filter(m => m.group === g);
+        const standings = computeStandings(g);
+        const standingsHtml = `
+            <table class="w-full text-sm md:text-base mb-3">
+                <thead class="text-xs text-slate-500 uppercase tracking-wider"><tr>
+                    <th class="text-left py-1.5">Đội</th><th>Tr</th><th>T</th><th>H</th><th>B</th><th>HS</th><th class="text-amber-400">Đ</th>
+                </tr></thead>
+                <tbody>${standings.map((r, i) => `
+                    <tr class="border-t border-slate-800 transition-colors hover:bg-slate-800/50 ${i < 2 ? 'text-sky-300' : 'text-slate-400'}">
+                        <td class="py-2 font-semibold">${teamHtml(r.team, '', true)}</td>
+                        <td class="text-center">${r.p}</td><td class="text-center">${r.w}</td><td class="text-center">${r.d}</td><td class="text-center">${r.l}</td>
+                        <td class="text-center">${r.gf - r.ga >= 0 ? '+' : ''}${r.gf - r.ga}</td>
+                        <td class="text-center font-extrabold text-base md:text-lg">${r.pts}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>`;
+
+        const matchesHtml = matches.map(m => {
+            const pick = state.myPred.picks[m.key] || {};
+            const locked = isLocked(m);
+            const ft = ftScore(m);
+            const earned = matchEarned(state.myPred, m);
+            const { counts, total } = pickCountsFor(m);
+            const crowd = total ? `<span class="text-xs text-slate-500">${Object.entries(counts).map(([k, v]) => `${isRealTeam(k) ? flagOf(k) : k} ${Math.round(v / total * 100)}%`).join(' · ')}</span>` : '';
+            return `
+            <div class="bg-slate-900/50 border border-slate-800 rounded-lg p-3 space-y-2 transition-all duration-300 hover:border-sky-700/50 hover:bg-slate-900/80 hover:shadow-lg hover:shadow-sky-950/30 hover:-translate-y-0.5 ${locked ? 'opacity-90' : ''}">
+                <div class="flex items-center justify-between gap-2 text-xs">
+                    <span class="text-slate-500">${fmtKick(m)}</span>
+                    <span class="text-right">
+                        ${ft ? `<b class="text-white text-sm">KQ ${ft[0]}-${ft[1]}</b>` : (locked ? '<span class="text-amber-500">🔒 Đang đá/chờ KQ</span>' : '<span class="text-slate-600">Chưa đá</span>')}
+                        ${earned != null ? `<b class="ml-1.5 ${earned > 0 ? 'text-sky-400' : 'text-slate-500'}">+${earned}đ</b>` : ''}
+                    </span>
+                </div>
+                <div class="flex items-center gap-2 md:gap-3">
+                    <div class="flex-1 min-w-0 text-right text-sm md:text-base font-medium truncate">${teamHtml(m.team1)}</div>
+                    <div class="flex items-center gap-1.5 md:gap-2 shrink-0">
+                        ${stepperHtml(m, 'h', locked)}
+                        <span class="text-slate-600 font-bold">:</span>
+                        ${stepperHtml(m, 'a', locked)}
+                    </div>
+                    <div class="flex-1 min-w-0 text-sm md:text-base font-medium truncate">${teamHtml(m.team2)}</div>
+                </div>
+                ${crowd ? `<div>${crowd}</div>` : ''}
+            </div>`;
+        }).join('');
+
+        return `
+        <details data-g="${esc(g)}" class="group glass border border-white/10 rounded-xl overflow-hidden transition-all duration-300 hover:border-sky-500/40 open:border-sky-700/50 open:shadow-xl open:shadow-sky-950/30" ${openSet.has(g) ? 'open' : ''}>
+            <summary class="cursor-pointer px-4 md:px-5 py-3.5 font-bold text-white hover:bg-slate-800 transition-colors flex items-center justify-between">
+                <span>🏟️ ${esc(g)} <span class="text-xs font-normal text-slate-500 ml-2">${standings.map(r => flagOf(r.team)).join(' ')}</span></span>
+            </summary>
+            <div class="px-3 md:px-5 pb-4 pt-1">
+                ${standingsHtml}
+                <div class="space-y-2">${matchesHtml}</div>
+            </div>
+        </details>`;
+    }).join('');
+
+}
+
+// Delegation: 1 listener cho mọi stepper (vòng bảng + panel sắp diễn ra)
+document.addEventListener('click', e => {
+    const btn = e.target.closest('.step-btn');
+    if (!btn || btn.disabled) return;
+    const key = btn.dataset.key, side = btn.dataset.side, d = +btn.dataset.d;
+    const cur = state.myPred.picks[key] || {};
+    let v = cur[side];
+    v = v == null ? (d > 0 ? 0 : null) : Math.min(20, Math.max(0, v + d));
+    if (v === cur[side] || (v == null && cur[side] == null)) return;
+    state.lastInteract = Date.now();
+    setPick(key, { ...cur, [side]: v });
+    document.querySelectorAll(`[data-sv="${CSS.escape(key)}|${side}"]`).forEach(el => {
+        el.textContent = v ?? '·';
+        el.classList.toggle('text-slate-600', v == null);
+        el.classList.toggle('text-white', v != null);
+        el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+    });
+    renderHeaderPoints();
+});
+
+// ===================== RENDER: UPCOMING (2 trận gần nhất) =====================
+function renderUpcoming() {
+    const box = $('upcomingContainer');
+    if (!box) return;
+    const next = state.matches
+        .filter(m => m.kickoff.getTime() > Date.now())
+        .sort((a, b) => a.kickoff - b.kickoff)
+        .slice(0, 2);
+    if (!next.length) { box.innerHTML = ''; return; }
+
+    box.innerHTML = `
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        ${next.map(m => {
+            const label = m.group ? esc(m.group) : (ROUND_VI[m.round] || esc(m.round));
+            const bothReal = isRealTeam(m.team1) && isRealTeam(m.team2);
+            return `
+            <div class="glass border border-sky-500/25 rounded-2xl p-4 relative overflow-hidden transition-all duration-300 hover:border-sky-400/50 hover:shadow-xl hover:shadow-sky-950/40">
+                <div class="absolute -top-10 -right-10 w-32 h-32 bg-sky-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-bold uppercase tracking-wider text-sky-400">⚡ Sắp diễn ra · ${label}</span>
+                    <span class="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-full px-2.5 py-1">⏳ còn ${countdownTxt(m)}</span>
+                </div>
+                <div class="flex flex-wrap items-center justify-center gap-2 md:gap-3 text-sm md:text-lg font-bold text-white mb-1">
+                    <span class="flex-1 text-right">${teamHtml(m.team1)}</span>
+                    ${m.group && bothReal ? `
+                        <span class="flex items-center gap-2">${stepperHtml(m, 'h', false)}<span class="text-slate-600">:</span>${stepperHtml(m, 'a', false)}</span>
+                    ` : '<span class="text-slate-500 text-sm font-extrabold px-2">VS</span>'}
+                    <span class="flex-1">${teamHtml(m.team2)}</span>
+                </div>
+                <p class="text-center text-xs text-slate-500">🕐 ${fmtKick(m)} <span class="text-slate-600">(giờ máy bạn)</span> · ${esc(m.ground || '')}</p>
+            </div>`;
+        }).join('')}
+    </div>`;
+}
+// Countdown tự nhịp mỗi phút (không chạy khi đang thao tác để tránh giật)
+setInterval(() => { if (state.me && !interacting()) renderUpcoming(); }, 60000);
+
+// ===================== RENDER: BRACKET =====================
+function bracketMatchCard(m) {
+    const pick = state.myPred.picks[m.key] || {};
+    const locked = isLocked(m);
+    const bothReal = isRealTeam(m.team1) && isRealTeam(m.team2);
+    const winner = realWinner(m);
+    const earned = matchEarned(state.myPred, m);
+    const { counts, total } = pickCountsFor(m);
+
+    const sideRow = (team) => {
+        const real = isRealTeam(team);
+        const isPicked = pick.w === team;
+        const isWinner = winner === team;
+        const pct = total && counts[team] ? Math.round(counts[team] / total * 100) : 0;
+        return `
+        <button class="bracket-pick w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded text-left text-sm transition-all duration-200
+            ${isWinner ? 'bg-cyan-500/15 border border-cyan-300/70 shadow-[0_0_12px_rgba(34,211,238,0.4)]' : isPicked ? 'bg-sky-500/15 border border-sky-400/70 shadow-[0_0_10px_rgba(56,189,248,0.4)]' : 'bg-white/[0.04] border border-white/10'}
+            ${(!real || locked) ? 'cursor-default' : 'hover:border-sky-400/80 hover:bg-sky-500/10 hover:scale-[1.03] hover:shadow-[0_0_10px_rgba(56,189,248,0.3)] active:scale-95 cursor-pointer'}"
+            data-key="${esc(m.key)}" data-team="${esc(team)}" ${(!real || locked) ? 'disabled' : ''}>
+            <span class="truncate min-w-0 ${real ? 'text-white font-medium' : 'text-slate-500 italic text-xs'}">${real ? flagOf(team) + ' ' + esc(team) : '🏷 ' + esc(team)}</span>
+            <span class="flex items-center gap-1.5 shrink-0">
+                ${total && real ? `<span class="text-xs text-slate-500">${pct}%</span>` : ''}
+                ${isPicked ? '<span class="neon-text">✔</span>' : ''}
+                ${isWinner ? '<span>🏆</span>' : ''}
+            </span>
+        </button>`;
+    };
+
+    const s = m.score || {};
+    const scoreTxt = s.ft ? `${s.ft[0]}-${s.ft[1]}${s.et ? ` (hp ${s.et[0]}-${s.et[1]})` : ''}${s.p ? ` (pen ${s.p[0]}-${s.p[1]})` : ''}` : '';
+    const ROUND_GLOW = {
+        'Round of 32': 'glow-r32', 'Round of 16': 'glow-r16', 'Quarter-final': 'glow-qf',
+        'Semi-final': 'glow-sf', 'Match for third place': 'glow-qf', 'Final': 'glow-final'
+    };
+    return `
+    <div class="bracket-match glass border ${ROUND_GLOW[m.round] || 'glow-r32'} rounded-lg p-2 space-y-1.5 transition-all duration-300">
+        <div class="flex justify-between text-xs text-slate-500 px-0.5">
+            <span>#${m.num} · ${m.kickoff.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} ${m.kickoff.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+            <span>${scoreTxt ? `<b class="text-white">${scoreTxt}</b>` : (locked ? '🔒' : bothReal ? 'Chọn đội đi tiếp' : 'Chờ xác định đội')}
+            ${earned != null ? ` <b class="${earned > 0 ? 'text-sky-400' : 'text-slate-500'}">+${earned}đ</b>` : ''}</span>
+        </div>
+        ${sideRow(m.team1)}
+        ${sideRow(m.team2)}
+    </div>`;
+}
+
+function renderBracket() {
+    const byNum = {};
+    state.matches.forEach(m => { if (m.num) byNum[m.num] = m; });
+
+    $('bracketContainer').innerHTML = BRACKET_COLS.map(col => `
+        <div class="bracket-col">${col.map(num => byNum[num] ? bracketMatchCard(byNum[num]) : '').join('')}</div>
+    `).join('');
+
+    const third = byNum[103];
+    $('thirdPlaceContainer').innerHTML = third ? `
+        <h4 class="text-sm font-bold text-slate-400 mb-2">🥉 Tranh hạng 3 (+2đ)</h4>
+        ${bracketMatchCard(third)}` : '';
+
+    document.querySelectorAll('.bracket-pick:not([disabled])').forEach(btn => {
+        btn.addEventListener('click', () => {
+            state.lastInteract = Date.now();
+            setPick(btn.dataset.key, { w: btn.dataset.team });
+            // Giữ vị trí scroll ngang của bracket để không bị nhảy khi render lại
+            const sc = document.querySelector('.bracket-scroll');
+            const x = sc ? sc.scrollLeft : 0;
+            renderBracket();
+            if (sc) sc.scrollLeft = x;
+            renderHeaderPoints();
+        });
+    });
+
+    // Champion select
+    const sel = $('championSelect');
+    const championLocked = Date.now() >= KO_START.getTime() || !!state.myPred.champion;
+    sel.innerHTML = '<option value="">— Chưa chọn —</option>' + state.teams.map(t =>
+        `<option value="${esc(t)}" ${state.myPred.champion === t ? 'selected' : ''}>${esc(t)}</option>`).join('');
+    sel.disabled = championLocked;
+    $('championLockNote').textContent = championLocked ? '🔒 Đã chốt, không thể thay đổi' : 'Chọn 1 LẦN DUY NHẤT trước vòng knockout (28/6/2026)';
+}
+
+// Logic chọn Champion với Modal
+$('championSelect').addEventListener('change', e => {
+    const selected = e.target.value;
+    if (!selected) return;
+
+    $('confirmTeamName').textContent = selected;
+    $('championConfirmModal').classList.remove('hidden');
+    
+    // Lưu tạm vào dataset để dùng khi confirm
+    $('confirmChampionBtn').dataset.team = selected;
+});
+
+$('cancelChampionBtn').addEventListener('click', () => {
+    $('championSelect').value = state.myPred.champion || ""; // Reset về cũ
+    $('championConfirmModal').classList.add('hidden');
+});
+
+$('confirmChampionBtn').addEventListener('click', () => {
+    const team = $('confirmChampionBtn').dataset.team;
+    state.myPred.champion = team;
+    scheduleSave();
+    
+    $('championSelect').disabled = true;
+    $('championSelect').value = team;
+    $('championLockNote').textContent = '🔒 Đã chốt, không thể thay đổi';
+    $('championConfirmModal').classList.add('hidden');
+});
+
+// ===================== RENDER: LEADERBOARD =====================
+function leaderboardRows() {
+    return Object.entries(state.allPreds)
+        .map(([uid, pred]) => ({ uid, name: pred.name || uid, photo: pred.photo, ...userTotals(pred), champion: pred.champion }))
+        .sort((a, b) => b.total - a.total);
+}
+
+function renderLeaderboard() {
+    const rows = leaderboardRows();
+    $('leaderboardBody').innerHTML = rows.length ? rows.map((r, i) => `
+        <tr class="border-t border-white/5 transition-colors duration-200 ${i === 0 ? 'bg-gradient-to-r from-amber-500/10 via-transparent to-transparent' : ''} ${r.uid === state.me?.uid ? 'bg-sky-500/10' : ''} hover:bg-sky-500/[0.06]">
+            <td class="px-2 md:px-4 py-3 font-bold ${i === 0 ? 'text-amber-400' : i === 1 ? 'text-slate-300' : i === 2 ? 'text-orange-400' : 'text-slate-500'}">${['🥇','🥈','🥉'][i] || i + 1}</td>
+            <td class="px-2 md:px-4 py-3">
+                <span class="font-semibold text-white">${esc(r.name)}</span>
+                ${r.champion ? `<span class="text-xs text-slate-500 ml-2 hidden md:inline">👑 ${flagOf(r.champion)} ${esc(r.champion)}</span>` : ''}
+                ${r.uid === state.me?.uid ? '<span class="text-xs bg-sky-800/60 text-sky-300 px-1.5 py-0.5 rounded ml-2">BẠN</span>' : ''}
+            </td>
+            <td class="px-4 py-3 text-center text-slate-300 hidden sm:table-cell">${r.group}</td>
+            <td class="px-4 py-3 text-center text-slate-300 hidden sm:table-cell">${r.ko}</td>
+            <td class="px-4 py-3 text-center hidden sm:table-cell ${r.bonus ? 'text-amber-400 font-bold' : 'text-slate-600'}">${r.bonus || '-'}</td>
+            <td class="px-2 md:px-4 py-3 text-right text-lg font-extrabold neon-text">${r.total}</td>
+        </tr>`).join('')
+        : '<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Chưa có ai dự đoán. Hãy là người đầu tiên!</td></tr>';
+
+    renderRaceChart(rows);
+}
+
+function renderRaceChart(rows) {
+    const dates = [...new Set(state.matches.filter(m => ftScore(m) || realWinner(m)).map(m => m.date))].sort();
+    const top = rows.slice(0, 8);
+    const palette = ['#38bdf8', '#fbbf24', '#fb7185', '#818cf8', '#22d3ee', '#a3e635', '#f472b6', '#94a3b8'];
+    const datasets = top.map((r, i) => {
+        const pred = state.allPreds[r.uid];
+        let cum = 0;
+        const data = dates.map(d => {
+            for (const m of state.matches) {
+                if (m.date !== d) continue;
+                const p = matchEarned(pred, m);
+                if (p != null) cum += p;
+            }
+            return cum;
+        });
+        return { label: r.name, data, borderColor: palette[i], backgroundColor: palette[i], tension: 0.3, pointRadius: 2 };
+    });
+
+    if (state.raceChart) state.raceChart.destroy();
+    state.raceChart = new Chart($('raceChart').getContext('2d'), {
+        type: 'line',
+        data: { labels: dates.map(d => d.slice(5).replace('-', '/')), datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#cbd5e1' } } },
+            scales: {
+                y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(51,65,85,0.4)' } },
+                x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(51,65,85,0.2)' } }
+            }
+        }
+    });
+}
+
+// ===================== RENDER: STATS =====================
+function renderStats() {
+    const preds = Object.values(state.allPreds);
+    const totalUsers = preds.length;
+    const totalPicks = preds.reduce((s, p) => s + Object.keys(p.picks || {}).length, 0);
+    const playedMatches = state.matches.filter(m => ftScore(m) || realWinner(m)).length;
+
+    $('statsSummaryCards').innerHTML = [
+        { icon: '👥', label: 'Người tham gia', val: totalUsers, color: 'sky' },
+        { icon: '🎯', label: 'Tổng lượt dự đoán', val: totalPicks, color: 'indigo' },
+        { icon: '✅', label: 'Trận đã có kết quả', val: `${playedMatches}/104`, color: 'amber' }
+    ].map(c => `
+        <div class="glass border border-sky-500/20 neon-card rounded-xl p-5 text-center transition-all duration-300 hover:-translate-y-1 hover:border-sky-400/50">
+            <div class="text-3xl mb-1">${c.icon}</div>
+            <div class="text-3xl font-extrabold text-${c.color}-400">${c.val}</div>
+            <div class="text-xs text-slate-500 uppercase tracking-wider mt-1">${c.label}</div>
+        </div>`).join('');
+
+    // Champion distribution
+    const champCounts = {};
+    preds.forEach(p => { if (p.champion) champCounts[p.champion] = (champCounts[p.champion] || 0) + 1; });
+    const champTotal = Object.values(champCounts).reduce((a, b) => a + b, 0);
+    $('championStats').innerHTML = champTotal ? Object.entries(champCounts).sort((a, b) => b[1] - a[1]).map(([team, n]) => `
+        <div class="flex items-center gap-3">
+            <span class="w-40 text-sm text-white truncate">${flagOf(team)} ${esc(team)}</span>
+            <div class="flex-1 bg-slate-900/80 border border-white/5 rounded-full h-5 overflow-hidden">
+                <div class="bg-gradient-to-r from-sky-600 to-cyan-400 h-full rounded-full flex items-center justify-end pr-2 text-xs font-bold text-slate-900 shadow-[0_0_10px_rgba(56,189,248,0.5)]" style="width:${Math.max(8, n / champTotal * 100)}%">${n}</div>
+            </div>
+            <span class="text-xs text-slate-500 w-10">${Math.round(n / champTotal * 100)}%</span>
+        </div>`).join('')
+        : '<p class="text-sm text-slate-500">Chưa ai chọn nhà vô địch.</p>';
+
+    // Match selector
+    const sel = $('statsMatchSelect');
+    const prev = sel.value;
+    sel.innerHTML = state.matches.map(m => {
+        const label = m.group
+            ? `${m.group}: ${m.team1} vs ${m.team2} (${m.date.slice(5).replace('-', '/')})`
+            : `${ROUND_VI[m.round] || m.round} #${m.num}: ${m.team1} vs ${m.team2}`;
+        return `<option value="${esc(m.key)}">${esc(label)}</option>`;
+    }).join('');
+    if (prev && state.matches.some(m => m.key === prev)) sel.value = prev;
+    renderStatsDetail();
+}
+
+function renderStatsDetail() {
+    const key = $('statsMatchSelect').value;
+    const m = state.matches.find(x => x.key === key);
+    if (!m) { $('statsMatchDetail').innerHTML = ''; return; }
+    const locked = isLocked(m);
+    const ft = ftScore(m);
+
+    const rows = Object.entries(state.allPreds).map(([uid, pred]) => {
+        const pick = pred.picks?.[key];
+        let pickTxt = '<span class="text-slate-600">—</span>';
+        if (pick) {
+            // Đã gỡ bỏ logic ẩn bài (🙈 Ẩn tới giờ đá). Giờ hiển thị thẳng luôn!
+            if (m.group && pick.h != null) pickTxt = `<b class="text-white">${pick.h} - ${pick.a}</b>`;
+            else if (pick.w) pickTxt = `<b class="text-white">${flagOf(pick.w)} ${esc(pick.w)}</b>`;
+        }
+        const earned = locked ? matchEarned(pred, m) : null;
+        return { name: pred.name || uid, me: uid === state.me?.uid, pickTxt, earned };
+    }).sort((a, b) => (b.earned ?? -1) - (a.earned ?? -1));
+
+    $('statsMatchDetail').innerHTML = `
+        <div class="glass border border-sky-500/25 neon-card rounded-lg p-4 mb-3 flex items-center justify-center gap-4 text-lg">
+            ${teamHtml(m.team1, 'font-bold text-white')}
+            <span class="text-2xl font-extrabold ${ft ? 'text-sky-400' : 'text-slate-600'}">${ft ? `${ft[0]} - ${ft[1]}` : 'vs'}</span>
+            ${teamHtml(m.team2, 'font-bold text-white')}
+        </div>
+        <table class="w-full text-sm">
+            <thead class="text-xs text-slate-500 uppercase"><tr>
+                <th class="text-left py-2">Người chơi</th><th class="text-center">Dự đoán</th><th class="text-right">Điểm</th>
+            </tr></thead>
+            <tbody>${rows.map(r => `
+                <tr class="border-t border-slate-800 ${r.me ? 'bg-sky-950/30' : ''}">
+                    <td class="py-2.5 text-white">${esc(r.name)} ${r.me ? '<span class="text-xs bg-sky-800/60 text-sky-300 px-1.5 py-0.5 rounded">BẠN</span>' : ''}</td>
+                    <td class="text-center">${r.pickTxt}</td>
+                    <td class="text-right font-bold ${r.earned > 0 ? 'text-sky-400' : 'text-slate-500'}">${r.earned != null ? '+' + r.earned : '—'}</td>
+                </tr>`).join('')}
+            </tbody>
+        </table>`;
+}
+$('statsMatchSelect').addEventListener('change', renderStatsDetail);
+
+// ===================== HEADER / AUTH UI =====================
+function renderHeaderPoints() {
+    if (!state.me) return;
+    const t = userTotals({ ...state.myPred, name: state.me.name });
+    $('userPoints').textContent = `${t.total} điểm`;
+}
+
+function renderAll() {
+    renderUpcoming();
+    renderSquads();
+    renderGroups();
+    renderBracket();
+    renderLeaderboard();
+    renderStats();
+    renderHeaderPoints();
+}
+
+function showLogin() {
+    $('loginSection').classList.remove('hidden');
+    $('appSection').classList.add('hidden');
+    $('userBox').classList.add('hidden');
+    // Bỏ toggle 2 box riêng, giờ xài chung 1 form
+}
+
+function showApp() {
+    $('loginSection').classList.add('hidden');
+    $('appSection').classList.remove('hidden');
+    $('userBox').classList.remove('hidden');
+    $('userName').textContent = state.me.name;
+    if (state.me.photo) { $('userAvatar').src = state.me.photo; $('userAvatar').classList.remove('hidden'); }
+    else $('userAvatar').classList.add('hidden');
+    renderAll();
+}
+
+function loginError(msg) {
+    const el = $('loginError');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+}
+
+if (!useFirebase) {
+    $('demoBanner').classList.remove('hidden');
+}
+
+$('masterLoginBtn').addEventListener('click', async () => {
+    const btn = $('masterLoginBtn');
+    const txt = $('masterLoginText');
+    const loader = $('masterLoginLoader');
+    const username = $('inpUsername').value.trim().toLowerCase();
+    const pass = $('inpPassword').value.trim();
+    const name = $('inpDisplayName').value.trim();
+
+    if (!username || !pass) return loginError("Nhập đủ Tên đăng nhập & Mật khẩu Bang Hội!");
+    if (username.includes(" ")) return loginError("Tên đăng nhập không được có dấu cách!");
+
+    $('loginError').classList.add('hidden');
+    btn.disabled = true;
+    txt.classList.add('hidden');
+    loader.classList.remove('hidden');
+
+    try {
+        await store.loginMaster(username, pass, name);
+        // Thành công thì auth state thay đổi tự gọi showApp()
+    } catch (e) {
+        loginError(e.message);
+    } finally {
+        btn.disabled = false;
+        txt.classList.remove('hidden');
+        loader.classList.add('hidden');
+    }
+});
+
+$('inpPassword').addEventListener('keydown', e => { if (e.key === 'Enter') $('masterLoginBtn').click(); });
+
+$('logoutBtn').addEventListener('click', () => store.logout());
+$('refreshBtn').addEventListener('click', async () => { await Promise.all([loadMatches(), loadSquads()]); if (state.me) renderAll(); });
+
+// Tabs
+function activateTab(target) {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        const on = b.dataset.target === target;
+        b.classList.toggle('active', on);
+        b.classList.toggle('text-sky-400', on);
+        b.classList.toggle('border-sky-400', on);
+        b.classList.toggle('text-slate-400', !on);
+        b.classList.toggle('border-transparent', !on);
+    });
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    $(target).classList.add('active');
+}
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => activateTab(btn.dataset.target));
+});
+
+// ===================== BOOT =====================
+const [loaded] = await Promise.all([loadMatches(), loadSquads()]);
+store.init(
+    user => {
+        state.me = user;
+        if (user) {
+            // nạp lại pick của chính mình từ allPreds nếu có
+            const mine = state.allPreds[user.uid];
+            if (mine) state.myPred = { picks: mine.picks || {}, champion: mine.champion || '' };
+            if (loaded) showApp();
+        } else {
+            state.myPred = { picks: {}, champion: '' };
+            showLogin();
+        }
+    },
+    all => {
+        state.allPreds = all;
+        if (state.me && all[state.me.uid]) {
+            state.myPred = { picks: all[state.me.uid].picks || {}, champion: all[state.me.uid].champion || '' };
+        } else if (state.me) {
+            scheduleSave(); // user mới: tạo doc ngay để xuất hiện trong BXH/thống kê
+        }
+        if (state.me && loaded && !$('appSection').classList.contains('hidden')) {
+            // Đang thao tác (bấm tỉ số/pick) thì chỉ cập nhật phần nhẹ, không rebuild
+            // groups/bracket để tránh giật; mọi thứ sẽ đồng bộ ở lần render kế tiếp.
+            renderLeaderboard();
+            renderStats();
+            renderHeaderPoints();
+            renderUpcoming();
+            if (!interacting()) { renderGroups(); renderBracket(); }
+        }
+    }
+);
+</script>
+</body>
+</html>
