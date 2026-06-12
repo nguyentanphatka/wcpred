@@ -791,7 +791,7 @@ async function loadMatches() {
         });
         state.teams = [...teamSet].sort();
         const done = state.matches.filter(m => ftScore(m)).length;
-        $('statusText').textContent = `Đã tải ${state.matches.length} trận · ${done} trận có kết quả · nguồn cập nhật ~hằng ngày`;
+        $('statusText').textContent = `Đã tải ${state.matches.length} trận · nguồn cập nhật ~hằng ngày`;
         $('matchCountBadge').textContent = `${state.matches.length} trận`;
         $('statusSpinner').classList.add('hidden');
         $('statusBanner').classList.add('bg-sky-950/40', 'border-sky-800/50');
