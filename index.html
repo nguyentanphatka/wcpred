@@ -252,7 +252,7 @@
 
             <div id="loginFormBox" class="space-y-4">
                 <input id="inpUsername" type="text" placeholder="Tên đăng nhập (viết liền không dấu)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors">
-                <input id="inpPassword" type="password" placeholder="Mật khẩu Bang Hội" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors">
+                <input id="inpPassword" type="password" placeholder="Mật khẩu phòng (để trống = phòng công khai)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors">
                 <input id="inpDisplayName" type="text" placeholder="Tên hiển thị (Bắt buộc nếu là lần đầu đăng nhập)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors">
                 
                 <button id="masterLoginBtn" class="w-full py-3 mt-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg transition-colors flex justify-center items-center gap-2">
@@ -740,29 +740,30 @@ if (useFirebase) {
         async loginMaster(username, pass, name) {
             await fetchBanned();
 
-            let roomId = 'default';
-            let roomName = 'Dự đoán';
+            let roomId, roomName, cfg = null;
             try {
-                const configSnap = await fsMod.getDoc(fsMod.doc(db, 'config-user', 'settings'));
-                if (configSnap.exists()) {
-                    const cfg = configSnap.data();
-                    if (cfg.rooms && typeof cfg.rooms === 'object') {
-                        // Mỗi password là 1 room. roomId = hash(password) cho an toàn path.
-                        const key = pass || '';
-                        if (!Object.prototype.hasOwnProperty.call(cfg.rooms, key)) throw new Error("Sai Mật khẩu Bang Hội!");
-                        roomId = safeRoomId(key);
-                        roomName = cfg.rooms[key] || key;
-                    } else if (cfg.masterPassword) {
-                        // Legacy single-password mode
-                        if (pass && pass !== cfg.masterPassword) throw new Error("Sai Mật khẩu Bang Hội!");
-                        roomId = 'default';
-                        roomName = 'Dự đoán';
-                    }
-                }
-            } catch(e) {
-                if (e.message === "Sai Mật khẩu Bang Hội!") throw e;
-                if (e.code === 'permission-denied') throw new Error("Sai Mật khẩu Bang Hội!");
-                console.warn("Bỏ qua check pass (chưa config rule/database):", e);
+                const snap = await fsMod.getDoc(fsMod.doc(db, 'config-user', 'settings'));
+                cfg = snap.exists() ? snap.data() : null;
+            } catch (e) {
+                throw new Error("Không đọc được cấu hình phòng (kiểm tra Security Rules)!");
+            }
+            const rooms = (cfg && cfg.rooms && typeof cfg.rooms === 'object') ? cfg.rooms : null;
+            if (rooms) {
+                // CHỈ 2 trường hợp:
+                //  1) khớp đúng 1 password (key) trong rooms => vào room đó
+                //  2) bỏ trống password => vào room 'default' của db
+                // Sai password => từ chối hẳn, KHÔNG cho vào mặc định.
+                const key = pass || 'default';
+                if (!Object.prototype.hasOwnProperty.call(rooms, key)) throw new Error("Sai Mật khẩu Bang Hội!");
+                roomId = safeRoomId(key);
+                roomName = rooms[key] || key;
+            } else if (cfg && cfg.masterPassword) {
+                // Legacy 1-mật-khẩu-chung (không dùng map rooms)
+                if (pass && pass !== cfg.masterPassword) throw new Error("Sai Mật khẩu Bang Hội!");
+                roomId = 'default';
+                roomName = 'Dự đoán';
+            } else {
+                throw new Error("Hệ thống chưa cấu hình phòng (config-user/settings). Báo admin!");
             }
 
             // Chặn user — kiểm tra SAU khi biết room để hỗ trợ ban riêng từng room
@@ -1786,7 +1787,9 @@ function showApp() {
     $('appSection').classList.remove('hidden');
     $('userBox').classList.remove('hidden');
     $('userName').textContent = state.me.name;
-    $('roomLabel').textContent = state.roomName || 'Dự đoán';
+    const rn = state.roomName || 'Dự đoán';
+    $('roomLabel').textContent = rn;
+    document.title = `${rn} · World Cup 2026`; // tab trình duyệt theo tên phòng
     if (state.me.photo) { $('userAvatar').src = state.me.photo; $('userAvatar').classList.remove('hidden'); }
     else $('userAvatar').classList.add('hidden');
     renderAll();
