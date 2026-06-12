@@ -188,7 +188,7 @@
             <div class="flex items-center space-x-2 md:space-x-3 min-w-0">
                 <span class="text-2xl md:text-3xl">🏆</span>
                 <div class="min-w-0">
-                    <h1 class="text-sm md:text-xl font-bold text-white tracking-wider truncate">WORLD CUP 2026 <span class="bg-gradient-to-r from-sky-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent">Smartsales</span></h1>
+                    <h1 class="text-sm md:text-xl font-bold text-white tracking-wider truncate">WORLD CUP 2026 <span id="roomLabel" class="bg-gradient-to-r from-sky-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent">Dự đoán</span></h1>
                     <p class="text-xs text-slate-500 uppercase tracking-widest hidden md:block">Dự đoán đê ae ơi · 48 đội · 104 trận · 11/6 - 19/7/2026</p>
                 </div>
             </div>
@@ -505,10 +505,11 @@ const state = {
     allPreds: {},         // uid -> {name, photo, champion, picks}
     raceChart: null,
     saveTimer: null,
-    hadDoc: false,        // doc dự đoán của mình đã từng tồn tại trên server trong phiên này chưa
     lastInteract: 0,      // chống re-render khi người dùng đang thao tác (gây giật)
     squads: {},           // teamName -> [{number,pos,name,date_of_birth}]
-    squadTeam: ''         // đội đang xem trong tab Đội hình
+    squadTeam: '',        // đội đang xem trong tab Đội hình
+    roomId: 'default',    // room hiện tại (theo password khi đăng nhập)
+    roomName: ''          // tên hiển thị của room (value trong cfg.rooms)
 };
 const interacting = () => Date.now() - state.lastInteract < 2500;
 
@@ -594,7 +595,7 @@ if (useFirebase) {
     const usernameOf = u => ((u?.email || '').split('@')[0]).toLowerCase();
     async function fetchBanned() {
         try {
-            const snap = await fsMod.getDoc(fsMod.doc(db, 'config', 'settings'));
+            const snap = await fsMod.getDoc(fsMod.doc(db, 'config-user', 'settings'));
             bannedList = (snap.exists() && snap.data().banned) || [];
         } catch (e) { console.warn('Không đọc được danh sách banned:', e); }
     }
@@ -606,20 +607,42 @@ if (useFirebase) {
 
     store = {
         init(onUser, onAllPreds) {
+            let unsubPreds = null; // unsubscribe predictions listener khi đổi room / logout
+
             // Nghe realtime config/settings: admin vừa thêm tên vào `banned` là user bị đá ra ngay
-            fsMod.onSnapshot(fsMod.doc(db, 'config', 'settings'), snap => {
+            fsMod.onSnapshot(fsMod.doc(db, 'config-user', 'settings'), snap => {
                 bannedList = (snap.exists() && snap.data().banned) || [];
                 if (auth.currentUser && isBannedName(usernameOf(auth.currentUser))) kickOut();
             });
+
+            const startPredsListener = (roomId) => {
+                if (unsubPreds) unsubPreds();
+                unsubPreds = fsMod.onSnapshot(fsMod.collection(db, 'rooms', roomId, 'predictions'), snap => {
+                    const all = {};
+                    snap.forEach(d => { all[d.id] = d.data(); });
+                    onAllPreds(all);
+                }, err => {
+                    console.error('Firestore listen error:', err);
+                    if (err.code === 'permission-denied') {
+                        alert('⚠️ CẢNH BÁO TỪ TIỂU ĐỆ:\nĐại ca chưa mở Security Rules cho Database rồi! Vô tab Rules sửa lại ngay để app lưu được data.');
+                    }
+                });
+            };
+
             authMod.onAuthStateChanged(auth, async u => {
                 if (u) {
                     await fetchBanned();
-                    if (isBannedName(usernameOf(u))) { await kickOut(); return; } // signOut sẽ gọi lại callback với u=null
+                    if (isBannedName(usernameOf(u))) { await kickOut(); return; }
                     const dName = u.displayName || (u.email ? u.email.split('@')[0] : 'User');
+                    const roomId = localStorage.getItem('wc26_roomId') || 'default';
+                    const roomName = localStorage.getItem('wc26_roomName') || 'Dự đoán';
+                    state.roomId = roomId;
+                    state.roomName = roomName;
+                    startPredsListener(roomId);
                     onUser({ uid: u.uid, name: dName, photo: u.photoURL || '' });
                 } else {
+                    if (unsubPreds) { unsubPreds(); unsubPreds = null; }
                     // FIX MẠNH TAY: Luồng Auto-login chống văng khi F5
-                    // Trình duyệt gắt gao xóa cache Firebase? Ta tự đăng nhập lại ngầm luôn!
                     const savedUser = localStorage.getItem('arena_username');
                     if (savedUser) {
                         try {
@@ -630,45 +653,60 @@ if (useFirebase) {
                         } catch (e) {
                             console.warn("Auto-login ngầm thất bại:", e);
                             localStorage.removeItem('arena_username');
+                            localStorage.removeItem('wc26_roomId');
                             onUser(null);
                         }
                     } else {
-                        onUser(null); // Không có dấu vết cũ thì thôi, bắt login tay
+                        onUser(null);
                     }
-                }
-            });
-            fsMod.onSnapshot(fsMod.collection(db, 'predictions'), snap => {
-                const all = {};
-                snap.forEach(d => { all[d.id] = d.data(); });
-                onAllPreds(all);
-            }, err => {
-                console.error('Firestore listen error:', err);
-                // Bắt thẳng mặt lỗi Rules
-                if (err.code === 'permission-denied') {
-                    alert('⚠️ CẢNH BÁO TỪ TIỂU ĐỆ:\nĐại ca chưa mở Security Rules cho Database rồi! Vô tab Rules sửa lại ngay để app lưu được data.');
                 }
             });
         },
         async loginMaster(username, pass, name) {
             await fetchBanned();
             if (isBannedName(username)) throw new Error("🚫 Tài khoản này đã bị quản trị viên khóa!");
+
+            let roomId = 'default';
+            let roomName = 'Dự đoán';
             try {
-                const configSnap = await fsMod.getDoc(fsMod.doc(db, 'config', 'settings'));
+                const configSnap = await fsMod.getDoc(fsMod.doc(db, 'config-user', 'settings'));
                 if (configSnap.exists()) {
-                    const master = configSnap.data().masterPassword;
-                    if (master && pass !== master) throw new Error("Sai Mật khẩu Bang Hội!");
+                    const cfg = configSnap.data();
+                    if (cfg.rooms && typeof cfg.rooms === 'object') {
+                        const key = pass || 'default';
+                        if (!Object.prototype.hasOwnProperty.call(cfg.rooms, key)) throw new Error("Sai Mật khẩu Bang Hội!");
+                        roomId = key;
+                        roomName = cfg.rooms[key] || key;
+                    } else if (cfg.masterPassword) {
+                        // Legacy single-password mode
+                        if (pass && pass !== cfg.masterPassword) throw new Error("Sai Mật khẩu Bang Hội!");
+                        roomId = 'default';
+                        roomName = 'Dự đoán';
+                    }
                 }
             } catch(e) {
                 if (e.message === "Sai Mật khẩu Bang Hội!") throw e;
+                if (e.code === 'permission-denied') throw new Error("Sai Mật khẩu Bang Hội!");
                 console.warn("Bỏ qua check pass (chưa config rule/database):", e);
             }
+
+            // Lưu roomId + roomName trước khi Firebase auth để onAuthStateChanged dùng ngay
+            localStorage.setItem('wc26_roomId', roomId);
+            localStorage.setItem('wc26_roomName', roomName);
+            state.roomId = roomId;
+            state.roomName = roomName;
 
             const fakeEmail = `${username}@banghoi.local`;
             const fakePass = `Arena@${username}2026!`;
 
             try {
-                // Ưu tiên thử Đăng nhập trước (bỏ qua ô Tên hiển thị)
-                await authMod.signInWithEmailAndPassword(auth, fakeEmail, fakePass);
+                // Ưu tiên thử Đăng nhập trước
+                const cred = await authMod.signInWithEmailAndPassword(auth, fakeEmail, fakePass);
+                // Nếu user nhập tên mới → cập nhật luôn
+                if (name && name !== cred.user.displayName) {
+                    await authMod.updateProfile(cred.user, { displayName: name });
+                    if (state.me) state.me.name = name;
+                }
             } catch (authErr) {
                 // Thất bại (nghĩa là user chưa tồn tại) -> Chuyển sang luồng Tạo mới
                 if (!name) {
@@ -676,7 +714,7 @@ if (useFirebase) {
                 }
                 const cred = await authMod.createUserWithEmailAndPassword(auth, fakeEmail, fakePass);
                 await authMod.updateProfile(cred.user, { displayName: name });
-                
+
                 // Mẹo nhỏ: Ép UI nhận tên hiển thị mới ngay lập tức tránh race condition
                 if (state.me) state.me.name = name;
                 document.getElementById('userName').textContent = name;
@@ -685,13 +723,14 @@ if (useFirebase) {
             // Ghi nhớ cái tên để F5 còn tự auto-login
             localStorage.setItem('arena_username', username);
         },
-        async logout() { 
-            localStorage.removeItem('arena_username');
-            await authMod.signOut(auth); 
+        async logout() {
+            localStorage.clear();
+            sessionStorage.clear();
+            await authMod.signOut(auth);
         },
-        async save(uid, data) { 
-            // FIX 2: Thêm { merge: true } để an toàn, không overwrite mất data nếu có update chéo
-            await fsMod.setDoc(fsMod.doc(db, 'predictions', uid), data, { merge: true }); 
+        async save(uid, data) {
+            const roomId = state.roomId || 'default';
+            await fsMod.setDoc(fsMod.doc(db, 'rooms', roomId, 'predictions', uid), data, { merge: true });
         }
     };
 } else {
@@ -725,7 +764,7 @@ if (useFirebase) {
             localStorage.setItem(LS_ME, JSON.stringify(me));
             userCb(me);
         },
-        async logout() { localStorage.removeItem(LS_ME); userCb(null); },
+        async logout() { localStorage.clear(); sessionStorage.clear(); userCb(null); },
         async save(uid, data) {
             const all = readAll();
             all[uid] = data;
@@ -1670,6 +1709,7 @@ function showApp() {
     $('appSection').classList.remove('hidden');
     $('userBox').classList.remove('hidden');
     $('userName').textContent = state.me.name;
+    $('roomLabel').textContent = state.roomName || 'Dự đoán';
     if (state.me.photo) { $('userAvatar').src = state.me.photo; $('userAvatar').classList.remove('hidden'); }
     else $('userAvatar').classList.add('hidden');
     renderAll();
@@ -1693,13 +1733,16 @@ $('masterLoginBtn').addEventListener('click', async () => {
     const pass = $('inpPassword').value.trim();
     const name = $('inpDisplayName').value.trim();
 
-    if (!username || !pass) return loginError("Nhập đủ Tên đăng nhập & Mật khẩu Bang Hội!");
+    if (!username) return loginError("Nhập Tên đăng nhập!");
     if (username.includes(" ")) return loginError("Tên đăng nhập không được có dấu cách!");
 
     $('loginError').classList.add('hidden');
     btn.disabled = true;
     txt.classList.add('hidden');
     loader.classList.remove('hidden');
+
+    localStorage.removeItem('wc26_roomId');
+    localStorage.removeItem('wc26_roomName');
 
     try {
         await store.loginMaster(username, pass, name);
@@ -1740,35 +1783,29 @@ const [loaded] = await Promise.all([loadMatches(), loadSquads()]);
 if (loaded) await loadLiveScores(); // đè tỉ số realtime (ESPN) lên khung openfootball ngay từ đầu
 store.init(
     user => {
-        if (user?.uid !== state.me?.uid) state.hadDoc = false; // đổi user thì reset cờ
         state.me = user;
         if (user) {
-            // nạp lại pick của chính mình từ allPreds nếu có
-            const mine = state.allPreds[user.uid];
-            if (mine) { state.hadDoc = true; state.myPred = { picks: mine.picks || {}, champion: mine.champion || '' }; }
+            // Luôn bắt đầu rỗng, chờ onAllPreds từ Firebase set data đúng
+            state.myPred = { picks: {}, champion: '' };
             if (loaded) showApp();
         } else {
-            clearTimeout(state.saveTimer); // hủy save đang chờ, tránh ghi lại data sau khi out
+            clearTimeout(state.saveTimer);
             state.myPred = { picks: {}, champion: '' };
+            state.allPreds = {};
             showLogin();
         }
     },
     all => {
         state.allPreds = all;
-        if (state.me && all[state.me.uid]) {
-            state.hadDoc = true;
-            state.myPred = { picks: all[state.me.uid].picks || {}, champion: all[state.me.uid].champion || '' };
-        } else if (state.me) {
-            if (state.hadDoc) {
-                // Doc của mình TỪNG tồn tại mà giờ biến mất => admin đã xóa trên Firebase
-                // => KHÔNG tự tạo lại, ép đăng xuất luôn.
-                clearTimeout(state.saveTimer);
-                state.hadDoc = false;
-                alert('🚫 Dữ liệu của bạn đã bị quản trị viên xóa. Bạn sẽ được đăng xuất.');
-                store.logout();
-                return;
+        if (state.me) {
+            if (all[state.me.uid]) {
+                // Firebase có data → dùng đúng data đó, ghi đè local
+                state.myPred = { picks: all[state.me.uid].picks || {}, champion: all[state.me.uid].champion || '' };
+            } else {
+                // Firebase không có doc → reset rỗng + tạo doc mới
+                state.myPred = { picks: {}, champion: '' };
+                scheduleSave();
             }
-            scheduleSave(); // user mới thật sự: tạo doc ngay để xuất hiện trong BXH/thống kê
         }
         if (state.me && loaded && !$('appSection').classList.contains('hidden')) {
             // Đang thao tác (bấm tỉ số/pick) thì chỉ cập nhật phần nhẹ, không rebuild
