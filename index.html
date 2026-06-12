@@ -648,8 +648,25 @@ if (useFirebase) {
     // Admin thêm username (chữ thường) vào mảng `banned` trong doc config/settings
     // => user đang online bị đá ra ngay, không auto-login lại được, không đăng ký lại được.
     let bannedList = [];
-    const isBannedName = n => bannedList.includes(String(n || '').trim().toLowerCase());
+    // roomId an toàn cho Firestore path (KHÔNG lộ password): hash djb2 -> base36
+    const safeRoomId = s => { let h = 5381; const str = String(s || ''); for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0; return 'r' + h.toString(36); };
+    // Email/pass auth theo cặp (username, room) => cùng username ở 2 room là 2 tài khoản khác nhau.
+    // Room 'default'/legacy giữ format cũ để không vỡ tài khoản đã tạo trước đây.
+    const authCreds = (username, roomId) => {
+        const room = roomId && roomId !== 'default' ? roomId : '';
+        return {
+            email: `${username}@${room ? room + '.' : ''}banghoi.local`,
+            pass: `Arena@${room ? room + '_' : ''}${username}2026!`
+        };
+    };
     const usernameOf = u => ((u?.email || '').split('@')[0]).toLowerCase();
+    // Ban: khớp 'username' (global mọi room) HOẶC 'tên room:username' (chỉ room đó)
+    const isBannedName = (uname, roomName) => {
+        const u = String(uname || '').trim().toLowerCase();
+        if (!u) return false;
+        const r = String(roomName || '').trim().toLowerCase();
+        return bannedList.some(b => { const x = String(b).trim().toLowerCase(); return x === u || (r && x === `${r}:${u}`); });
+    };
     async function fetchBanned() {
         try {
             const snap = await fsMod.getDoc(fsMod.doc(db, 'config-user', 'settings'));
@@ -669,7 +686,7 @@ if (useFirebase) {
             // Nghe realtime config/settings: admin vừa thêm tên vào `banned` là user bị đá ra ngay
             fsMod.onSnapshot(fsMod.doc(db, 'config-user', 'settings'), snap => {
                 bannedList = (snap.exists() && snap.data().banned) || [];
-                if (auth.currentUser && isBannedName(usernameOf(auth.currentUser))) kickOut();
+                if (auth.currentUser && isBannedName(usernameOf(auth.currentUser), state.roomName)) kickOut();
             });
 
             const startPredsListener = (roomId) => {
@@ -689,28 +706,29 @@ if (useFirebase) {
             authMod.onAuthStateChanged(auth, async u => {
                 if (u) {
                     await fetchBanned();
-                    if (isBannedName(usernameOf(u))) { await kickOut(); return; }
-                    const dName = u.displayName || (u.email ? u.email.split('@')[0] : 'User');
                     const roomId = localStorage.getItem('wc26_roomId') || 'default';
                     const roomName = localStorage.getItem('wc26_roomName') || 'Dự đoán';
                     state.roomId = roomId;
                     state.roomName = roomName;
+                    if (isBannedName(usernameOf(u), roomName)) { await kickOut(); return; }
+                    const dName = u.displayName || (u.email ? u.email.split('@')[0] : 'User');
                     startPredsListener(roomId);
                     onUser({ uid: u.uid, name: dName, photo: u.photoURL || '' });
                 } else {
                     if (unsubPreds) { unsubPreds(); unsubPreds = null; }
-                    // FIX MẠNH TAY: Luồng Auto-login chống văng khi F5
+                    // FIX MẠNH TAY: Luồng Auto-login chống văng khi F5 (dựng lại email theo room đã lưu)
                     const savedUser = localStorage.getItem('arena_username');
+                    const savedRoom = localStorage.getItem('wc26_roomId') || 'default';
                     if (savedUser) {
                         try {
-                            const fakeEmail = `${savedUser}@banghoi.local`;
-                            const fakePass = `Arena@${savedUser}2026!`;
+                            const { email: fakeEmail, pass: fakePass } = authCreds(savedUser, savedRoom);
                             await authMod.signInWithEmailAndPassword(auth, fakeEmail, fakePass);
                             // Thành công nó sẽ tự nảy lại onAuthStateChanged có user
                         } catch (e) {
                             console.warn("Auto-login ngầm thất bại:", e);
                             localStorage.removeItem('arena_username');
                             localStorage.removeItem('wc26_roomId');
+                            localStorage.removeItem('wc26_roomName');
                             onUser(null);
                         }
                     } else {
@@ -721,7 +739,6 @@ if (useFirebase) {
         },
         async loginMaster(username, pass, name) {
             await fetchBanned();
-            if (isBannedName(username)) throw new Error("🚫 Tài khoản này đã bị quản trị viên khóa!");
 
             let roomId = 'default';
             let roomName = 'Dự đoán';
@@ -730,9 +747,10 @@ if (useFirebase) {
                 if (configSnap.exists()) {
                     const cfg = configSnap.data();
                     if (cfg.rooms && typeof cfg.rooms === 'object') {
-                        const key = pass || 'default';
+                        // Mỗi password là 1 room. roomId = hash(password) cho an toàn path.
+                        const key = pass || '';
                         if (!Object.prototype.hasOwnProperty.call(cfg.rooms, key)) throw new Error("Sai Mật khẩu Bang Hội!");
-                        roomId = key;
+                        roomId = safeRoomId(key);
                         roomName = cfg.rooms[key] || key;
                     } else if (cfg.masterPassword) {
                         // Legacy single-password mode
@@ -747,14 +765,16 @@ if (useFirebase) {
                 console.warn("Bỏ qua check pass (chưa config rule/database):", e);
             }
 
+            // Chặn user — kiểm tra SAU khi biết room để hỗ trợ ban riêng từng room
+            if (isBannedName(username, roomName)) throw new Error("🚫 Tài khoản này đã bị quản trị viên khóa!");
+
             // Lưu roomId + roomName trước khi Firebase auth để onAuthStateChanged dùng ngay
             localStorage.setItem('wc26_roomId', roomId);
             localStorage.setItem('wc26_roomName', roomName);
             state.roomId = roomId;
             state.roomName = roomName;
 
-            const fakeEmail = `${username}@banghoi.local`;
-            const fakePass = `Arena@${username}2026!`;
+            const { email: fakeEmail, pass: fakePass } = authCreds(username, roomId);
 
             try {
                 // Ưu tiên thử Đăng nhập trước
