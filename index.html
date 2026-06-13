@@ -1338,21 +1338,37 @@ document.addEventListener('click', e => {
     if (!btn || btn.disabled) return;
     const key = btn.dataset.key, side = btn.dataset.side, d = +btn.dataset.d;
     const cur = state.myPred.picks[key] || {};
+
+    // Cập nhật hiển thị 1 ô số tại chỗ (không re-render để khỏi giật)
+    const paintSide = (sd, val) => {
+        document.querySelectorAll(`[data-sv="${CSS.escape(key)}|${sd}"]`).forEach(el => {
+            el.textContent = val ?? '·';
+            el.classList.toggle('text-slate-600', val == null);
+            el.classList.toggle('text-white', val != null);
+            el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+        });
+    };
+
+    // LẦN BẤM ĐẦU cho trận chưa nhập (cả 2 bên đang trống) => kích hoạt cả 2 bên về 0-0,
+    // chưa cộng/trừ. Người dùng bấm tiếp +/- mới thay đổi số.
+    if (cur.h == null && cur.a == null) {
+        state.lastInteract = Date.now();
+        if (!setPick(key, { h: 0, a: 0 })) { renderGroups(); renderUpcoming(); return; }
+        paintSide('h', 0); paintSide('a', 0);
+        renderHeaderPoints();
+        return;
+    }
+
     let v = cur[side];
-    v = v == null ? (d > 0 ? 0 : null) : Math.min(20, Math.max(0, v + d));
-    if (v === cur[side] || (v == null && cur[side] == null)) return;
+    v = v == null ? 0 : Math.min(20, Math.max(0, v + d));
+    if (v === cur[side]) return;
     state.lastInteract = Date.now();
     if (!setPick(key, { ...cur, [side]: v })) {
         // Trận vừa khóa mà nút còn cũ: render lại để disable, không cập nhật số
         renderGroups(); renderUpcoming();
         return;
     }
-    document.querySelectorAll(`[data-sv="${CSS.escape(key)}|${side}"]`).forEach(el => {
-        el.textContent = v ?? '·';
-        el.classList.toggle('text-slate-600', v == null);
-        el.classList.toggle('text-white', v != null);
-        el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
-    });
+    paintSide(side, v);
     renderHeaderPoints();
 });
 
@@ -1444,22 +1460,23 @@ function renderUpcoming() {
 
     box.innerHTML = html;
 }
-// Countdown + phút trận đang đá: tự nhịp mỗi phút (không chạy khi đang thao tác để tránh giật)
+// Đếm ngược trận sắp đá: nhịp mỗi phút (không chạy khi đang thao tác để tránh giật)
+setInterval(() => { if (state.me && !interacting()) renderUpcoming(); }, 60000);
+
+// ===== TỰ CẬP NHẬT TỈ SỐ TRẬN ĐANG ĐÁ =====
+// Đổi số này để chỉnh tần suất (ms). 30000 = 30 giây/lần.
+const LIVE_POLL_MS = 30000;
+// Có trận trong cửa sổ live: đã khóa (qua giờ lăn bóng - 1h), chưa có KQ, trong ~2.5h từ giờ lăn bóng
+const hasLiveMatch = () => state.matches.some(m => !ftScore(m)
+    && Date.now() >= m.kickoff.getTime() - 3600000
+    && Date.now() <= m.kickoff.getTime() + 150 * 60000);
 setInterval(async () => {
-    if (!state.me || interacting()) return;
-    renderUpcoming();
-    // Có trận trong cửa sổ live (đã khóa, chưa có KQ, trong ~2.5h từ giờ lăn bóng)
-    // => kéo tỉ số trực tiếp từ ESPN rồi render lại
-    const hasLive = state.matches.some(m => !ftScore(m)
-        && Date.now() >= m.kickoff.getTime() - 3600000
-        && Date.now() <= m.kickoff.getTime() + 150 * 60000);
-    if (hasLive) {
-        await loadLiveScores();
-        renderGroups(); renderBracket();
-        // Trận vừa kết thúc (ESPN chốt KQ) thì điểm số/BXH cũng cần cập nhật
-        renderLeaderboard(); renderStats(); renderHeaderPoints();
-    }
-}, 60000);
+    if (!state.me || interacting() || !hasLiveMatch()) return;
+    await loadLiveScores(); // kéo tỉ số trực tiếp từ ESPN
+    renderUpcoming(); renderGroups(); renderBracket();
+    // Trận vừa kết thúc (ESPN chốt KQ) thì điểm số/BXH cũng cần cập nhật
+    renderLeaderboard(); renderStats(); renderHeaderPoints();
+}, LIVE_POLL_MS);
 
 // ===================== RENDER: BRACKET =====================
 function bracketMatchCard(m) {
