@@ -911,25 +911,60 @@ async function loadLiveScores() {
         for (const ev of (data.events || [])) {
             const c = ev.competitions?.[0]; if (!c) continue;
             const t = (c.competitors || []).map(x => ({
+                id: String(x.team?.id || ''),
                 name: ESPN_ALIAS[x.team?.displayName] || x.team?.displayName || '',
                 score: +x.score || 0,
                 shoot: x.shootoutScore != null ? +x.shootoutScore : null
             }));
             if (t.length !== 2) continue;
+            // Duyệt sự kiện trận 1 lượt: bàn thắng (goals theo đội) + dòng thời gian (events: bàn/thẻ vàng/đỏ)
+            const goals = [[], []];
+            const events = [];
+            for (const dt of (c.details || [])) {
+                const idx = t.findIndex(x => x.id === String(dt.team?.id || ''));
+                if (idx < 0) continue;
+                const typ = dt.type?.text || '';
+                let kind = null;
+                if (dt.scoringPlay) kind = 'goal';
+                else if (/red/i.test(typ)) kind = 'red';
+                else if (/yellow/i.test(typ)) kind = 'yellow';
+                if (!kind) continue;
+                const item = {
+                    name: dt.athletesInvolved?.[0]?.displayName || dt.athletesInvolved?.[0]?.shortName || '?',
+                    min: dt.clock?.displayValue || '', og: !!dt.ownGoal, pen: !!dt.penaltyKick
+                };
+                if (kind === 'goal') goals[idx].push(item);
+                events.push({ idx, kind, ...item });
+            }
+            // Thống kê 2 đội (name -> displayValue)
+            const statOf = comp => { const o = {}; for (const s of (comp.statistics || [])) o[s.name] = s.displayValue; return o; };
+            const stats = [statOf(c.competitors[0]), statOf(c.competitors[1])];
             byPair[espnPairKey(t[0].name, t[1].name, c.date || ev.date)] = {
-                t, state: ev.status?.type?.state, clock: ev.status?.displayClock || '', detail: ev.status?.type?.detail || ''
+                id: ev.id, t, goals, events, stats,
+                venue: (c.venue?.fullName || '') + (c.venue?.address?.city ? ' · ' + c.venue.address.city : ''),
+                state: ev.status?.type?.state, clock: ev.status?.displayClock || '', detail: ev.status?.type?.detail || ''
             };
         }
         let liveCount = 0;
         for (const m of state.matches) {
             const ev = byPair[espnPairKey(m.team1, m.team2, m.kickoff.toISOString())];
-            delete m.live;
+            delete m.live; delete m.goals; delete m.summary;
             if (!ev) continue;
             // Xếp đúng chiều team1/team2 (phòng ESPN đảo sân nhà/khách)
             const i1 = mvNorm(ev.t[0].name) === mvNorm(m.team1) ? 0 : 1;
             const s1 = ev.t[i1], s2 = ev.t[1 - i1];
+            // Người ghi bàn theo đúng chiều team1 (h) / team2 (a)
+            if (ev.goals[i1].length || ev.goals[1 - i1].length) m.goals = { h: ev.goals[i1], a: ev.goals[1 - i1] };
+            // Tóm tắt trận: sân + thống kê 2 đội + dòng thời gian sự kiện (map side theo team1/team2)
+            if (ev.events.length || Object.keys(ev.stats[i1] || {}).length) {
+                m.summary = {
+                    venue: ev.venue,
+                    statH: ev.stats[i1] || {}, statA: ev.stats[1 - i1] || {},
+                    events: ev.events.map(e => ({ side: e.idx === i1 ? 'h' : 'a', kind: e.kind, name: e.name, min: e.min, og: e.og, pen: e.pen }))
+                };
+            }
             if (ev.state === 'in') {
-                m.live = { h: s1.score, a: s2.score, clock: ev.clock, detail: ev.detail };
+                m.live = { h: s1.score, a: s2.score, clock: ev.clock, detail: ev.detail, espnId: ev.id, flip: i1 === 1 };
                 liveCount++;
             } else if (ev.state === 'post' && !ftScore(m)) {
                 // Trận xong mà openfootball chưa có KQ => chốt bằng ESPN
@@ -945,6 +980,34 @@ async function loadLiveScores() {
         console.warn('Không lấy được tỉ số trực tiếp (ESPN), dùng openfootball:', e);
         return false;
     }
+}
+
+// Lấy ĐỘI HÌNH RA SÂN + DIỄN BIẾN trận (chỉ cho trận đang đá) từ ESPN summary endpoint.
+// Mỗi trận live 1 request; gắn vào m.feed = { lineups:{h,a}, commentary:[{time,text}] }.
+const ESPN_SUMMARY = id => `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary?event=${id}`;
+async function loadLiveFeeds() {
+    const lives = state.matches.filter(m => m.live && m.live.espnId);
+    await Promise.all(lives.map(async m => {
+        try {
+            const r = await fetch(ESPN_SUMMARY(m.live.espnId), { cache: 'no-store' });
+            if (!r.ok) return;
+            const j = await r.json();
+            // Đội hình ra sân: starter=true, map đội về h/a theo tên team1
+            const lu = { h: [], a: [] };
+            for (const rs of (j.rosters || [])) {
+                const nm = ESPN_ALIAS[rs.team?.displayName] || rs.team?.displayName || '';
+                const side = mvNorm(nm) === mvNorm(m.team1) ? 'h' : 'a';
+                lu[side] = (rs.roster || []).filter(p => p.starter).map(p => ({
+                    num: p.jersey || '', name: p.athlete?.displayName || '', pos: p.position?.abbreviation || ''
+                }));
+            }
+            // Diễn biến: ESPN trả tăng dần theo thời gian -> hiển thị mới nhất lên đầu
+            const commentary = (j.commentary || []).map(c => ({ time: c.time?.displayValue || '', text: c.text || '', type: c.play?.type?.text || '' }));
+            m.feed = { lineups: lu, commentary };
+        } catch (e) { /* bỏ qua, không có feed thì thôi */ }
+    }));
+    // Dọn feed của trận không còn live
+    for (const m of state.matches) if (!m.live && m.feed) delete m.feed;
 }
 
 // ===================== SAVE (debounced) =====================
@@ -1180,7 +1243,7 @@ function showSquad(team) {
 
 // Click tên đội ở bất kỳ đâu / chip đội -> mở tab Đội hình
 document.addEventListener('click', e => {
-    const el = e.target.closest('.team-link, .squad-chip');
+    const el = e.target.closest('.team-link, .squad-chip, .squad-nav');
     if (!el) return;
     showSquad(el.dataset.team);
 });
@@ -1237,8 +1300,10 @@ function renderGroups() {
     const container = $('groupsContainer');
     const groups = [...new Set(state.matches.filter(m => m.group).map(m => m.group))];
     // Giữ nguyên các group đang mở để re-render không làm nhảy giao diện
-    const prevOpen = [...container.querySelectorAll('details[open]')].map(d => d.dataset.g);
+    const prevOpen = [...container.querySelectorAll('details[data-g][open]')].map(d => d.dataset.g);
     const openSet = new Set(prevOpen.length ? prevOpen : ['Group A']);
+    // Giữ trạng thái mở của "Chi tiết trận đấu" khi live poll re-render mỗi 30s
+    const prevOpenMd = new Set([...container.querySelectorAll('details[data-md][open]')].map(d => d.dataset.md));
     container.innerHTML = groups.map(g => {
         const matches = state.matches.filter(m => m.group === g);
         const standings = computeStandings(g);
@@ -1302,6 +1367,52 @@ function renderGroups() {
                     ${crowd}
                 </div>` : '';
 
+            // Bảng người ghi bàn (ESPN) — 2 cột, nằm dưới tỉ số: trái = đội nhà, phải = đội khách.
+            // CHỈ hiện khi trận ĐANG ĐÁ (chưa có KQ cuối). Trận đã kết thúc => xem trong "Chi tiết trận đấu".
+            const goalLines = arr => arr.map(gl =>
+                `<div class="truncate leading-tight"><span class="text-white">${esc(gl.name)}</span> <span class="text-amber-400 font-semibold">${esc(gl.min)}</span>${gl.pen ? '<span class="text-slate-500"> (pen)</span>' : ''}${gl.og ? '<span class="text-rose-400"> (OG)</span>' : ''}</div>`
+            ).join('');
+            const goalsHtml = (!ft && m.goals && (m.goals.h.length || m.goals.a.length)) ? `
+                <div class="grid grid-cols-2 gap-x-3 text-[11px] border-t border-white/5 pt-2">
+                    <div class="text-right space-y-0.5 pr-3 border-r border-white/5">
+                        <div class="text-[9px] uppercase tracking-wider text-slate-600 mb-0.5">⚽ Bàn thắng</div>
+                        ${m.goals.h.length ? goalLines(m.goals.h) : '<div class="text-slate-600">—</div>'}
+                    </div>
+                    <div class="text-left space-y-0.5">
+                        <div class="text-[9px] uppercase tracking-wider text-slate-600 mb-0.5">Bàn thắng ⚽</div>
+                        ${m.goals.a.length ? goalLines(m.goals.a) : '<div class="text-slate-600">—</div>'}
+                    </div>
+                </div>` : '';
+
+            // Expand/collapse: thông tin tóm tắt trận (sân + thống kê 2 đội + dòng thời gian sự kiện)
+            const STAT_ROWS = [['possessionPct', 'Kiểm soát bóng', '%'], ['totalShots', 'Dứt điểm', ''], ['shotsOnTarget', 'Sút trúng đích', ''], ['wonCorners', 'Phạt góc', ''], ['foulsCommitted', 'Phạm lỗi', '']];
+            const statBar = (label, hv, av, unit) => {
+                const h = parseFloat(hv) || 0, a = parseFloat(av) || 0, tot = h + a, pct = tot ? Math.round(h / tot * 100) : 50;
+                return `
+                <div class="space-y-0.5">
+                    <div class="flex justify-between items-center text-[11px]"><b class="text-sky-300 w-10">${esc(hv ?? 0)}${unit}</b><span class="text-slate-500">${label}</span><b class="text-rose-300 w-10 text-right">${esc(av ?? 0)}${unit}</b></div>
+                    <div class="flex h-1.5 rounded-full overflow-hidden bg-slate-700/40"><div class="bg-sky-400" style="width:${pct}%"></div><div class="bg-rose-400" style="width:${100 - pct}%"></div></div>
+                </div>`;
+            };
+            const evIcon = ev => ev.kind === 'goal' ? (ev.og ? '⚽<sup class="text-rose-400">OG</sup>' : ev.pen ? '⚽<sup>P</sup>' : '⚽') : ev.kind === 'yellow' ? '🟨' : '🟥';
+            const sm = m.summary;
+            const statsHtml = sm ? STAT_ROWS.filter(([k]) => sm.statH[k] != null || sm.statA[k] != null).map(([k, l, u]) => statBar(l, sm.statH[k], sm.statA[k], u)).join('') : '';
+            const timelineHtml = (sm && sm.events.length) ? sm.events.map(ev => `
+                <div class="flex items-center gap-2 text-[11px] ${ev.side === 'h' ? '' : 'flex-row-reverse'}">
+                    <span class="w-9 shrink-0 text-amber-400 font-semibold ${ev.side === 'h' ? 'text-left' : 'text-right'}">${esc(ev.min)}</span>
+                    <span class="shrink-0">${evIcon(ev)}</span>
+                    <span class="flex-1 min-w-0 truncate text-white ${ev.side === 'h' ? 'text-left' : 'text-right'}">${esc(ev.name)}</span>
+                </div>`).join('') : '';
+            const detailHtml = (sm && (statsHtml || timelineHtml)) ? `
+                <details data-md="${esc(m.key)}" class="border-t border-white/5 pt-1" ${prevOpenMd.has(m.key) ? 'open' : ''}>
+                    <summary class="cursor-pointer text-[11px] font-semibold text-sky-300/80 hover:text-sky-300 py-1">📊 Chi tiết trận đấu</summary>
+                    <div class="pt-2 space-y-3">
+                        ${sm.venue ? `<p class="text-[11px] text-slate-500 text-center">🏟️ ${esc(sm.venue)}</p>` : ''}
+                        ${statsHtml ? `<div class="space-y-1.5">${statsHtml}</div>` : ''}
+                        ${timelineHtml ? `<div class="space-y-1 border-t border-white/5 pt-2">${timelineHtml}</div>` : ''}
+                    </div>
+                </details>` : '';
+
             return `
             <div class="bg-slate-900/50 border border-slate-800 rounded-lg p-3 space-y-2 transition-all duration-300 hover:border-sky-700/50 hover:bg-slate-900/80 hover:shadow-lg hover:shadow-sky-950/30 hover:-translate-y-0.5 ${live ? 'border-rose-800/50' : ''}">
                 <div class="flex items-center justify-between gap-2 text-xs">
@@ -1313,6 +1424,8 @@ function renderGroups() {
                     ${centerHtml}
                     <div class="flex-1 min-w-0 text-sm md:text-base font-medium truncate">${teamHtml(m.team2)}</div>
                 </div>
+                ${goalsHtml}
+                ${detailHtml}
                 ${myPickHtml}
                 ${!locked && crowd ? `<div>${crowd}</div>` : ''}
             </div>`;
@@ -1372,10 +1485,93 @@ document.addEventListener('click', e => {
     renderHeaderPoints();
 });
 
+// ===================== VIỆT HÓA DIỄN BIẾN (ESPN chỉ có tiếng Anh) =====================
+// Dịch theo template: câu sự kiện (bàn/thẻ/thay người/góc/việt vị...) trước, rồi cụm mô tả cú sút.
+// Phần không khớp giữ nguyên tiếng Anh (graceful). Tên cầu thủ/đội & tỉ số giữ nguyên.
+const VI_RULES = [
+    // --- mốc trận ---
+    [/Lineups are announced and players are warming up\.?/i, 'Đội hình ra sân, các cầu thủ đang khởi động.'],
+    [/First Half begins\.?/i, 'Hiệp 1 bắt đầu.'],
+    [/Second Half begins\s*/i, 'Hiệp 2 bắt đầu. '],
+    [/First Half ends,/i, 'Hết hiệp 1,'],
+    [/Second Half ends,/i, 'Hết hiệp 2,'],
+    [/Match ends,/i, 'Trận đấu kết thúc,'],
+    [/Delay over\.[^.]*\./i, 'Hết tạm dừng, trận đấu tiếp tục.'],
+    [/Delay in match for a drinks break\.?/i, 'Tạm dừng để nghỉ uống nước.'],
+    [/Delay in match because of an injury /i, 'Tạm dừng vì chấn thương '],
+    [/Fourth official has announced (\d+) minutes of added time\.?/i, 'Trọng tài thứ tư công bố $1 phút bù giờ.'],
+    // --- sự kiện chính ---
+    [/Goal!\s*/g, 'BÀN THẮNG! '],
+    [/Substitution, ([^.]+?)\. (.+?) replaces (.+?)\./g, 'Thay người, $1. $2 vào sân thay $3.'],
+    [/Corner, ([^.]+?)\. Conceded by (.+?)\./g, 'Phạt góc, $1. Do $2 nhượng.'],
+    [/Offside, ([^.]+?)\. (.+?) is caught offside\./g, 'Việt vị, $1. $2 rơi vào thế việt vị.'],
+    [/Penalty conceded by /g, 'Phạt đền do '],
+    [/Penalty ([^.,]+?)\./g, 'Phạt đền cho $1.'],
+    [/Foul by /g, 'Phạm lỗi: '],
+    [/Handball by /g, 'Để bóng chạm tay: '],
+    [/Dangerous play by /g, 'Pha bóng nguy hiểm: '],
+    [/ is shown the yellow card for a bad foul\./g, ' nhận thẻ vàng vì lỗi nghiêm trọng.'],
+    [/ is shown the yellow card\.?/g, ' nhận thẻ vàng.'],
+    [/ is shown the red card for violent conduct\./g, ' nhận thẻ đỏ vì hành vi bạo lực.'],
+    [/ is shown the red card\.?/g, ' nhận thẻ đỏ.'],
+    [/VAR Decision: Card upgraded /g, 'Quyết định VAR: nâng thẻ phạt '],
+    // --- đá phạt ---
+    [/ wins a free kick in the attacking half\./g, ' được hưởng quả phạt bên phần sân đối phương.'],
+    [/ wins a free kick in the defensive half\./g, ' được hưởng quả phạt bên phần sân nhà.'],
+    [/ wins a free kick on the left wing\./g, ' được hưởng quả phạt bên cánh trái.'],
+    [/ wins a free kick on the right wing\./g, ' được hưởng quả phạt bên cánh phải.'],
+    // --- cú sút ---
+    [/Attempt blocked\.\s*/g, 'Cú sút bị chặn. '],
+    [/Attempt saved\.\s*/g, 'Cú sút bị cản phá. '],
+    [/Attempt missed\.\s*/g, 'Cú sút ra ngoài. '],
+    [/right footed shot/g, 'cú sút chân phải'],
+    [/left footed shot/g, 'cú sút chân trái'],
+    [/\bheader\b/g, 'pha đánh đầu'],
+    [/from outside the box/g, 'từ ngoài vòng cấm'],
+    [/from the centre of the box/g, 'từ giữa vòng cấm'],
+    [/from the left side of the box/g, 'từ phía trái vòng cấm'],
+    [/from the right side of the box/g, 'từ phía phải vòng cấm'],
+    [/from very close range/g, 'từ cự ly rất gần'],
+    [/from more than (\d+) yards/g, 'từ hơn $1 yard'],
+    [/hits the right post/g, 'sút trúng cột dọc phải'],
+    [/hits the left post/g, 'sút trúng cột dọc trái'],
+    [/hits the bar/g, 'sút trúng xà ngang'],
+    [/ is blocked\./g, ' bị chặn lại.'],
+    [/ is too high\./g, ' đi quá cao.'],
+    [/ is high and wide to the left\./g, ' đi cao và chệch trái.'],
+    [/ is high and wide to the right\./g, ' đi cao và chệch phải.'],
+    [/ is close, but misses to the left\./g, ' đi sát nhưng chệch trái.'],
+    [/ is close, but misses to the right\./g, ' đi sát nhưng chệch phải.'],
+    [/ is close, but misses the top left corner\./g, ' đi sát nhưng chệch góc trên bên trái.'],
+    [/ is close, but misses the top right corner\./g, ' đi sát nhưng chệch góc trên bên phải.'],
+    [/ misses to the left\./g, ' chệch sang trái.'],
+    [/ misses to the right\./g, ' chệch sang phải.'],
+    [/ is saved\b/g, ' bị cản phá'],
+    // --- vị trí/kiến tạo ---
+    [/Assisted by /g, 'Kiến tạo: '],
+    [/ with a cross\b/g, ' bằng quả tạt'],
+    [/ following a corner\b/g, ' sau quả phạt góc'],
+    [/ following a set piece situation\b/g, ' sau tình huống cố định'],
+    [/ to the bottom left corner\b/g, ' vào góc dưới bên trái'],
+    [/ to the bottom right corner\b/g, ' vào góc dưới bên phải'],
+    [/ to the top left corner\b/g, ' vào góc trên bên trái'],
+    [/ to the top right corner\b/g, ' vào góc trên bên phải'],
+    [/ to the centre of the goal\b/g, ' vào giữa khung thành'],
+    [/ in the top left corner\b/g, ' ở góc trên bên trái'],
+    [/ in the bottom left corner\b/g, ' ở góc dưới bên trái'],
+    [/ in the top right corner\b/g, ' ở góc trên bên phải'],
+    [/ in the bottom right corner\b/g, ' ở góc dưới bên phải'],
+    [/ in the top centre of the goal\b/g, ' ở chính giữa trên khung thành'],
+    [/ by (?=[A-ZÀ-Ỹ])/g, ' bởi ']  // còn lại chủ yếu "cản phá ... bởi thủ môn"
+];
+const viComment = txt => { let s = String(txt || ''); for (const [re, rep] of VI_RULES) s = s.replace(re, rep); return s; };
+
 // ===================== RENDER: UPCOMING (trận đang đá + 2 trận gần nhất) =====================
 function renderUpcoming() {
     const box = $('upcomingContainer');
     if (!box) return;
+    // Giữ trạng thái mở của Đội hình / Diễn biến khi re-render mỗi 30s
+    const prevOpenFeed = new Set([...box.querySelectorAll('details[data-lf][open]')].map(d => d.dataset.lf));
     const live = state.matches.filter(m => m.live);
     const next = state.matches
         .filter(m => m.kickoff.getTime() > Date.now())
@@ -1396,6 +1592,81 @@ function renderUpcoming() {
                 ${live.map(m => {
                     const label = m.group ? esc(m.group) : (ROUND_VI[m.round] || esc(m.round));
                     const clockTxt = m.live.clock || m.live.detail || '';
+                    // Bảng người ghi bàn (2 cột) — tông đỏ khớp card live
+                    const goalLine = gl => `<div class="truncate leading-tight"><span class="text-white">${esc(gl.name)}</span> <span class="text-amber-400 font-semibold">${esc(gl.min)}</span>${gl.pen ? '<span class="text-slate-500"> (pen)</span>' : ''}${gl.og ? '<span class="text-rose-400"> (OG)</span>' : ''}</div>`;
+                    const goalsBlock = (m.goals && (m.goals.h.length || m.goals.a.length)) ? `
+                    <div class="grid grid-cols-2 gap-x-4 mt-5 pt-4 border-t border-red-500/20 text-xs md:text-sm">
+                        <div class="text-right space-y-1 pr-4 border-r border-red-500/20">
+                            <div class="text-[10px] uppercase tracking-wider text-red-400/70 mb-1">⚽ Bàn thắng</div>
+                            ${m.goals.h.length ? m.goals.h.map(goalLine).join('') : '<div class="text-slate-600">—</div>'}
+                        </div>
+                        <div class="text-left space-y-1">
+                            <div class="text-[10px] uppercase tracking-wider text-red-400/70 mb-1">Bàn thắng ⚽</div>
+                            ${m.goals.a.length ? m.goals.a.map(goalLine).join('') : '<div class="text-slate-600">—</div>'}
+                        </div>
+                    </div>` : '';
+
+                    // ĐỘI HÌNH RA SÂN + DIỄN BIẾN trận (từ m.feed) — expand/collapse
+                    const fd = m.feed;
+                    const luCol = arr => arr.length ? arr.map(p => `<div class="truncate leading-tight"><span class="inline-block w-5 text-slate-500 text-[10px]">${esc(p.num)}</span> ${esc(p.name)}${p.pos ? ` <span class="text-slate-600 text-[10px]">${esc(p.pos)}</span>` : ''}</div>`).join('') : '<div class="text-slate-600">—</div>';
+                    // Nút điều hướng sang tab Đội hình của đội đó (chỉ khi là đội thật)
+                    const navBtn = team => isRealTeam(team) ? `<button class="squad-nav inline-flex items-center gap-1 mb-2 px-2 py-1 rounded-md bg-red-500/15 border border-red-500/30 text-red-200 hover:text-white hover:border-red-400/60 font-semibold transition-colors" data-team="${esc(team)}" title="Xem đội hình đầy đủ ${esc(team)}">📋 Chi tiết đội hình <span class="text-[10px]">→</span></button>` : '';
+                    const lineupHtml = (fd && (fd.lineups.h.length || fd.lineups.a.length)) ? `
+                    <details data-lf="${esc(m.key)}|lu" class="mt-4 pt-3 border-t border-red-500/20" ${prevOpenFeed.has(m.key + '|lu') ? 'open' : ''}>
+                        <summary class="cursor-pointer text-xs font-bold text-red-300/90 hover:text-red-200 py-1">📋 Đội hình ra sân</summary>
+                        <div class="grid grid-cols-2 gap-x-4 pt-2 text-[11px] md:text-xs">
+                            <div class="text-right space-y-0.5 pr-4 border-r border-red-500/15">${navBtn(m.team1)}${luCol(fd.lineups.h)}</div>
+                            <div class="text-left space-y-0.5">${navBtn(m.team2)}${luCol(fd.lineups.a)}</div>
+                        </div>
+                    </details>` : '';
+                    // Chỉ phóng to / tô màu VÀI TỪ KHÓA ngay trong dòng (không bọc cả dòng).
+                    // Tầng 1 (to + đậm): bàn thắng, thẻ, thay người, penalty. Tầng 2 (đậm): góc/việt vị/tay/VAR. Tầng 3 (nhẹ): phạm lỗi.
+                    const HILITE = [
+                        [/BÀN THẮNG!?/g, 'text-emerald-300 font-extrabold text-sm md:text-base'],   // bàn thắng
+                        [/thẻ vàng/g, 'text-amber-300 font-extrabold text-sm md:text-base'],         // thẻ vàng
+                        [/thẻ đỏ/g, 'text-rose-300 font-extrabold text-sm md:text-base'],            // thẻ đỏ
+                        [/Thay người/g, 'text-sky-300 font-extrabold text-sm md:text-base'],         // thay người
+                        [/Phạt đền/g, 'text-orange-300 font-extrabold text-sm md:text-base'],        // phạt đền
+                        [/Phạt góc/g, 'text-cyan-300 font-bold'],                                    // phạt góc
+                        [/Việt vị/g, 'text-fuchsia-300 font-bold'],                                  // việt vị
+                        [/chạm tay/g, 'text-orange-300 font-bold'],                                  // chạm tay
+                        [/\bVAR\b/g, 'text-indigo-300 font-bold'],                                   // VAR
+                        [/Phạm lỗi/g, 'text-slate-200 font-semibold']                                // phạm lỗi (nhẹ)
+                    ];
+                    // viComment dịch trước (text thô) -> hilite esc + tô màu từ khóa tiếng Việt
+                    const hilite = txt => { let s = esc(viComment(txt)); for (const [re, cls] of HILITE) s = s.replace(re, mm => `<span class="${cls}">${mm}</span>`); return s; };
+                    const comHtml = (fd && fd.commentary.length) ? `
+                    <details data-lf="${esc(m.key)}|cm" class="mt-3 pt-3 border-t border-red-500/20" ${prevOpenFeed.has(m.key + '|cm') ? 'open' : ''}>
+                        <summary class="cursor-pointer text-xs font-bold text-red-300/90 hover:text-red-200 py-1">📝 Diễn biến trận đấu</summary>
+                        <div class="pt-2 space-y-1.5 max-h-80 overflow-y-auto pr-1">
+                            ${fd.commentary.slice().reverse().slice(0, 60).map(c => `
+                            <div class="flex gap-2 items-baseline text-[11px] md:text-xs">
+                                <span class="w-9 shrink-0 text-amber-400/80 font-semibold">${esc(c.time)}</span>
+                                <span class="flex-1 text-slate-300 leading-snug">${hilite(c.text)}</span>
+                            </div>`).join('')}
+                        </div>
+                    </details>` : '';
+
+                    // 📊 Chi tiết trận đấu (thông số: kiểm soát bóng, dứt điểm...) — nằm DƯỚI diễn biến
+                    const sm = m.summary;
+                    const STAT_ROWS = [['possessionPct', 'Kiểm soát bóng', '%'], ['totalShots', 'Dứt điểm', ''], ['shotsOnTarget', 'Sút trúng đích', ''], ['wonCorners', 'Phạt góc', ''], ['foulsCommitted', 'Phạm lỗi', '']];
+                    const statBar = (label, hv, av, unit) => {
+                        const h = parseFloat(hv) || 0, a = parseFloat(av) || 0, tot = h + a, pct = tot ? Math.round(h / tot * 100) : 50;
+                        return `
+                        <div class="space-y-0.5">
+                            <div class="flex justify-between items-center text-xs"><b class="text-sky-300 w-12">${esc(hv ?? 0)}${unit}</b><span class="text-slate-400">${label}</span><b class="text-rose-300 w-12 text-right">${esc(av ?? 0)}${unit}</b></div>
+                            <div class="flex h-1.5 rounded-full overflow-hidden bg-slate-700/40"><div class="bg-sky-400" style="width:${pct}%"></div><div class="bg-rose-400" style="width:${100 - pct}%"></div></div>
+                        </div>`;
+                    };
+                    const statsRows = sm ? STAT_ROWS.filter(([k]) => sm.statH[k] != null || sm.statA[k] != null).map(([k, l, u]) => statBar(l, sm.statH[k], sm.statA[k], u)).join('') : '';
+                    const statsBlock = statsRows ? `
+                    <details data-lf="${esc(m.key)}|st" class="mt-3 pt-3 border-t border-red-500/20" ${prevOpenFeed.has(m.key + '|st') ? 'open' : ''}>
+                        <summary class="cursor-pointer text-xs font-bold text-red-300/90 hover:text-red-200 py-1">📊 Thống kê chi tiết trận đấu</summary>
+                        <div class="pt-2 space-y-2">
+                            <div class="flex justify-between text-[10px] uppercase tracking-wider text-slate-500 px-0.5"><span class="text-sky-400/80">${teamHtml(m.team1)}</span><span class="text-rose-400/80">${teamHtml(m.team2)}</span></div>
+                            ${statsRows}
+                        </div>
+                    </details>` : '';
                     return `
                 <div class="relative w-full rounded-2xl px-6 py-7 md:py-9 overflow-hidden transition-all duration-300
                     bg-gradient-to-br from-red-950/35 via-slate-900/95 to-slate-900
@@ -1423,7 +1694,11 @@ function renderUpcoming() {
                         </span>
                         <span class="flex-1 text-base md:text-2xl font-bold text-white leading-tight">${teamHtml(m.team2)}</span>
                     </div>
+                    ${goalsBlock}
                     <p class="text-center text-xs text-slate-500 mt-5">🕐 ${fmtKick(m)} · ${esc(m.ground || '')}</p>
+                    ${lineupHtml}
+                    ${comHtml}
+                    ${statsBlock}
                 </div>`;
                 }).join('')}
             </div>
@@ -1473,6 +1748,7 @@ const hasLiveMatch = () => state.matches.some(m => !ftScore(m)
 setInterval(async () => {
     if (!state.me || interacting() || !hasLiveMatch()) return;
     await loadLiveScores(); // kéo tỉ số trực tiếp từ ESPN
+    await loadLiveFeeds();  // đội hình + diễn biến trận đang đá
     renderUpcoming(); renderGroups(); renderBracket();
     // Trận vừa kết thúc (ESPN chốt KQ) thì điểm số/BXH cũng cần cập nhật
     renderLeaderboard(); renderStats(); renderHeaderPoints();
@@ -1856,7 +2132,7 @@ $('masterLoginBtn').addEventListener('click', async () => {
 $('inpPassword').addEventListener('keydown', e => { if (e.key === 'Enter') $('masterLoginBtn').click(); });
 
 $('logoutBtn').addEventListener('click', () => store.logout());
-$('refreshBtn').addEventListener('click', async () => { await Promise.all([loadMatches(), loadSquads()]); await loadLiveScores(); if (state.me) renderAll(); });
+$('refreshBtn').addEventListener('click', async () => { await Promise.all([loadMatches(), loadSquads()]); await loadLiveScores(); await loadLiveFeeds(); if (state.me) renderAll(); });
 
 // Tabs
 function activateTab(target) {
@@ -1877,7 +2153,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
 // ===================== BOOT =====================
 const [loaded] = await Promise.all([loadMatches(), loadSquads()]);
-if (loaded) await loadLiveScores(); // đè tỉ số realtime (ESPN) lên khung openfootball ngay từ đầu
+if (loaded) { await loadLiveScores(); await loadLiveFeeds(); } // đè tỉ số realtime + đội hình/diễn biến (ESPN)
 store.init(
     user => {
         state.me = user;
