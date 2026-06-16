@@ -189,7 +189,7 @@
                 <span class="text-2xl md:text-3xl">🏆</span>
                 <div class="min-w-0">
                     <h1 class="text-sm md:text-xl font-bold text-white tracking-wider truncate">WORLD CUP 2026 <span id="roomLabel" class="bg-gradient-to-r from-sky-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent">Dự đoán</span></h1>
-                    <p class="text-xs text-slate-500 uppercase tracking-widest hidden md:block">Dự đoán đê ae ơi · 48 đội · 104 trận · 11/6 - 19/7/2026</p>
+                    <p class="text-xs text-slate-500 uppercase tracking-widest hidden md:block">Luận anh hùng đi huynh đệ ơi! · 48 đội · 104 trận · 11/6 - 19/7/2026</p>
                 </div>
             </div>
             <div id="userBox" class="hidden items-center space-x-3 flex">
@@ -200,13 +200,14 @@
                 </div>
                 <button id="logoutBtn" class="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-md transition-colors text-slate-300">Đăng xuất</button>
             </div>
+            <button id="loginBtn" class="hidden text-sm px-4 py-2 bg-sky-600 hover:bg-sky-500 rounded-lg text-white font-semibold transition-colors shadow-lg shadow-sky-900/40">Đăng nhập</button>
         </div>
     </header>
 
     <!-- Modal Xác nhận Nhà Vô Địch -->
     <div id="championConfirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
         <div class="glass border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <h3 class="text-xl font-bold text-white mb-2">Chốt kèo nhà vô địch?</h3>
+            <h3 class="text-xl font-bold text-white mb-2">Phong ấn Thiên Hạ Vô Địch?</h3>
             <p class="text-sm text-slate-400 mb-6">Bạn đang chọn <span id="confirmTeamName" class="text-sky-400 font-bold"></span> làm Nhà Vô Địch. Sau khi xác nhận, lựa chọn này sẽ được khóa vĩnh viễn và không thể thay đổi.</p>
             <div class="flex gap-3">
                 <button id="cancelChampionBtn" class="flex-1 py-2.5 rounded-lg bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700">Hủy</button>
@@ -220,6 +221,29 @@
         <div class="glass border border-sky-500/30 neon-card rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden relative">
             <button id="playerModalClose" class="absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full bg-slate-900/80 border border-white/10 text-slate-400 hover:text-white hover:border-sky-400/60 transition-colors">✕</button>
             <div id="playerModalBody"></div>
+        </div>
+    </div>
+
+    <!-- Modal Đăng nhập -->
+    <div id="loginModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm">
+        <div class="glass border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
+            <button id="closeLoginModal" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-800 border border-white/10 text-slate-400 hover:text-white hover:border-sky-400/60 transition-colors text-lg flex items-center justify-center">✕</button>
+            <div class="text-center mb-5">
+                <div class="text-4xl mb-2">⚽</div>
+                <h2 class="text-xl font-bold text-white">Đăng nhập</h2>
+                <p class="text-sm text-slate-400 mt-1">1 Mật khẩu chung, Username tự chọn</p>
+            </div>
+            <p id="loginModalHint" class="hidden text-xs text-sky-300 bg-sky-950/40 border border-sky-800/40 rounded-lg p-2.5 mb-4 text-center"></p>
+            <div id="loginFormBox" class="space-y-4">
+                <input id="inpUsername" type="text" placeholder="Tên đăng nhập (viết liền không dấu)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors">
+                <input id="inpPassword" type="password" placeholder="Mật khẩu phòng (để trống = phòng công khai)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors">
+                <input id="inpDisplayName" type="text" placeholder="Tên hiển thị (Bắt buộc nếu là lần đầu đăng nhập)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors">
+                <button id="masterLoginBtn" class="w-full py-3 mt-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg transition-colors flex justify-center items-center gap-2">
+                    <span id="masterLoginText">Đăng nhập</span>
+                    <div id="masterLoginLoader" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin hidden"></div>
+                </button>
+            </div>
+            <p id="loginError" class="hidden mt-4 text-xs text-rose-400 bg-rose-950/40 border border-rose-800/50 rounded-lg p-3"></p>
         </div>
     </div>
 
@@ -242,27 +266,11 @@
             ⚠️ <strong>Chế độ DEMO (localStorage):</strong> chưa cấu hình Firebase nên dữ liệu chỉ lưu trên trình duyệt này. Điền <code class="bg-slate-800 px-1 rounded">firebaseConfig</code> trong file và làm theo README để cả nhóm dùng chung.
         </div>
 
-        <!-- LOGIN GATE -->
-        <section id="loginSection" class="hidden max-w-md mx-auto glass border border-white/10 rounded-2xl p-8 shadow-2xl mt-8">
-            <div class="text-center mb-6">
-                <div class="text-5xl mb-2">⚽</div>
-                <h2 class="text-2xl font-bold text-white">Vào Bang Hội</h2>
-                <p class="text-sm text-slate-400 mt-1">1 Mật khẩu chung, Username tự chọn</p>
-            </div>
-
-            <div id="loginFormBox" class="space-y-4">
-                <input id="inpUsername" type="text" placeholder="Tên đăng nhập (viết liền không dấu)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors">
-                <input id="inpPassword" type="password" placeholder="Mật khẩu phòng (để trống = phòng công khai)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors">
-                <input id="inpDisplayName" type="text" placeholder="Tên hiển thị (Bắt buộc nếu là lần đầu đăng nhập)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors">
-                
-                <button id="masterLoginBtn" class="w-full py-3 mt-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg transition-colors flex justify-center items-center gap-2">
-                    <span id="masterLoginText">Vào chơi ngay</span>
-                    <div id="masterLoginLoader" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin hidden"></div>
-                </button>
-            </div>
-
-            <p id="loginError" class="hidden mt-4 text-xs text-rose-400 bg-rose-950/40 border border-rose-800/50 rounded-lg p-3"></p>
-        </section>
+        <!-- Anon mode banner -->
+        <div id="anonBanner" class="hidden bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 mb-4 flex items-center justify-between gap-3 text-sm">
+            <span class="text-slate-400">👀 Đang xem ở <strong class="text-slate-300">chế độ khách</strong> · Lịch thi đấu hiển thị đầy đủ</span>
+            <button onclick="openLoginModal()" class="shrink-0 text-xs px-3 py-1.5 bg-sky-600 hover:bg-sky-500 rounded-md text-white font-semibold transition-colors">Đăng nhập để phán quyết</button>
+        </div>
 
         <!-- APP -->
         <section id="appSection" class="hidden">
@@ -340,10 +348,10 @@
                         <thead class="bg-sky-500/[0.07] text-xs uppercase tracking-wider text-sky-300/70">
                             <tr>
                                 <th class="px-2 md:px-4 py-3 text-left">#</th>
-                                <th class="px-2 md:px-4 py-3 text-left">Người chơi</th>
+                                <th class="px-2 md:px-4 py-3 text-left">Nhân sỹ võ lâm</th>
                                 <th class="px-4 py-3 text-center hidden sm:table-cell">Vòng bảng</th>
                                 <th class="px-4 py-3 text-center hidden sm:table-cell">Knockout</th>
-                                <th class="px-4 py-3 text-center hidden sm:table-cell">Bonus VĐ</th>
+                                <th class="px-4 py-3 text-center hidden sm:table-cell">Điểm vote nhà vô địch</th>
                                 <th class="px-2 md:px-4 py-3 text-right">Tổng điểm</th>
                             </tr>
                         </thead>
@@ -351,8 +359,8 @@
                     </table>
                 </div>
                 <div class="glass rounded-xl p-5 border border-sky-500/20 neon-card">
-                    <h3 class="text-lg font-bold text-white mb-1">📈 Cuộc đua điểm số theo thời gian</h3>
-                    <p class="text-xs text-slate-500 mb-4">Điểm tích lũy của từng người sau mỗi ngày thi đấu (top 8)</p>
+                    <h3 class="text-lg font-bold text-white mb-1">📈 Anh Hùng Bảng — Ai Tiên Tri Thần Chuẩn Nhất?</h3>
+                    <p class="text-xs text-slate-500 mb-4">Công lực tích lũy của từng hào kiệt sau mỗi ngày giao đấu (top 8)</p>
                     <div class="chart-container"><canvas id="raceChart"></canvas></div>
                 </div>
             </div>
@@ -365,8 +373,8 @@
                     <div id="championStats" class="space-y-2"></div>
                 </div>
                 <div class="glass rounded-xl p-5 border border-sky-500/20 neon-card">
-                    <h3 class="text-lg font-bold text-white mb-1">🔍 Soi dự đoán từng trận</h3>
-                    <p class="text-xs text-slate-500 mb-3">Chọn một trận để xem tất cả mọi người đã dự đoán gì và được bao nhiêu điểm</p>
+                    <h3 class="text-lg font-bold text-white mb-1">🔍 Bình luận từng trận đấu</h3>
+                    <p class="text-xs text-slate-500 mb-3">Chọn một trận để xem tất cả mọi người đã phán quyết gì và được bao nhiêu điểm</p>
                     <select id="statsMatchSelect" class="w-full md:w-auto md:min-w-[300px] bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-sky-500 mb-4"></select>
                     <div id="statsMatchDetail"></div>
                 </div>
@@ -389,7 +397,7 @@
                     <span class="text-xl">🎙️</span>
                     <div>
                         <h4 class="text-sm font-bold text-white">BLV Mõm</h4>
-                        <p class="text-[10px] text-sky-300">Phân tích kèo & Chiến thuật</p>
+                        <p class="text-[10px] text-sky-300">Bình Trận & Mưu Lược</p>
                     </div>
                 </div>
                 <button id="close-chat-btn" class="text-slate-400 hover:text-white transition-colors">
@@ -403,7 +411,7 @@
                 <div class="flex gap-2">
                     <div class="w-7 h-7 rounded-full bg-sky-900 border border-sky-500/50 flex items-center justify-center shrink-0">🎙️</div>
                     <div class="chat-bubble-msg bg-slate-800/80 border border-slate-700 rounded-2xl rounded-tl-sm p-3 text-slate-200">
-                        Chào đại ka! Đệ là BLV Tiểu Đệ - Chuyên gia phân tích dữ liệu WC 2026. Đại ka cần soi kèo trận nào, xin chiến thuật hay dự đoán tỷ lệ thắng thì cứ ném vào đây nhé!
+                        Bái kiến đại hiệp! Tại hạ là BLV Tiểu Đệ - Chuyên gia bình trận WC 2026. Đại hiệp cần bình trận nào, xin mưu lược hay luận đoán thắng bại thì cứ ném vào đây nhé!
                     </div>
                 </div>
             </div>
@@ -411,7 +419,7 @@
             <!-- Input Area -->
             <div class="p-3 border-t border-sky-500/20 bg-slate-900/90">
                 <form id="ai-chat-form" class="flex gap-2">
-                    <input type="text" id="ai-chat-input" class="flex-1 bg-slate-800 border border-slate-600 rounded-full px-4 py-2 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors placeholder-slate-400" placeholder="VD: Phân tích kèo Anh vs Pháp..." autocomplete="off">
+                    <input type="text" id="ai-chat-input" class="flex-1 bg-slate-800 border border-slate-600 rounded-full px-4 py-2 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors placeholder-slate-400" placeholder="VD: Bình trận Anh vs Pháp..." autocomplete="off">
                     <button type="submit" id="ai-chat-submit" class="w-9 h-9 rounded-full bg-sky-600 hover:bg-sky-500 text-white flex items-center justify-center transition-colors shadow-[0_0_10px_rgba(56,189,248,0.4)]">
                         <svg class="w-4 h-4 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
                     </button>
@@ -1030,7 +1038,7 @@ function scheduleSave() {
             });
 
             $('statusSpinner').classList.add('hidden');
-            $('statusText').textContent = '✅ Đã lưu dự đoán an toàn!';
+            $('statusText').textContent = '✅ Đã ghi danh phán quyết thành công!';
         } catch (e) {
             console.error('Save failed:', e);
             $('statusSpinner').classList.add('hidden');
@@ -1049,7 +1057,7 @@ function setPick(key, pick) {
     // kể cả khi nút trên màn hình vẫn còn bấm được do render từ trước mốc khóa
     const m = state.matches.find(x => x.key === key);
     if (!m || isLocked(m)) {
-        $('statusText').textContent = '🔒 Trận này đã khóa dự đoán (trước giờ bóng lăn 1 tiếng)!';
+        $('statusText').textContent = '🔒 Trận này đã phong ấn! (trước giờ bóng lăn 1 tiếng)';
         return false;
     }
     state.myPred.picks[key] = pick;
@@ -1074,7 +1082,7 @@ function countdownTxt(m) {
 // Trạng thái trận (Thêm chữ Khoảng phút dựa trên giờ hệ thống)
 function liveMinuteTxt(m) {
     const mins = Math.floor((Date.now() - m.kickoff.getTime()) / 60000);
-    if (mins < 0) return `🔒 Khóa kèo · Lăn bóng sau ${-mins}p`;
+    if (mins < 0) return `🔒 Phong ấn · Lăn bóng sau ${-mins}p`;
     if (mins > 150) return `🔴 Chờ cập nhật KQ`; // Quá giờ thì báo đợi KQ chứ không báo phút ảo nữa
     return `🔴 Đang diễn ra (Khoảng phút ${mins})`;
 }
@@ -1082,10 +1090,10 @@ function liveMinuteTxt(m) {
 // Thời gian còn lại để dự đoán = giờ bóng lăn - 1h (mốc khóa của isLocked)
 function predictWindowHtml(m) {
     const left = (m.kickoff.getTime() - 3600000 - Date.now()) / 1000;
-    if (left <= 0) return '<span class="text-amber-500 font-semibold">🔒 Đã khóa dự đoán</span>';
+    if (left <= 0) return '<span class="text-amber-500 font-semibold">🔒 Đã phong ấn</span>';
     const d = Math.floor(left / 86400), h = Math.floor(left % 86400 / 3600), mi = Math.floor(left % 3600 / 60);
     const txt = d ? `${d} ngày ${h}g` : h ? `${h}g ${mi}p` : `${mi} phút`;
-    return `<span class="text-emerald-400">⏳ Còn <b>${txt}</b> để dự đoán</span>`;
+    return `<span class="text-emerald-400">⏳ Còn <b>${txt}</b> để phán quyết</span>`;
 }
 
 // Stepper −/+ chọn tỉ số (update DOM tại chỗ, không re-render => không giật)
@@ -1449,6 +1457,12 @@ function renderGroups() {
 document.addEventListener('click', e => {
     const btn = e.target.closest('.step-btn');
     if (!btn || btn.disabled) return;
+
+    if (!state.me) {
+        openLoginModal('Đăng nhập để ghi danh phán quyết!');
+        return;
+    }
+
     const key = btn.dataset.key, side = btn.dataset.side, d = +btn.dataset.d;
     const cur = state.myPred.picks[key] || {};
 
@@ -1842,6 +1856,12 @@ $('championSelect').addEventListener('change', e => {
     const selected = e.target.value;
     if (!selected) return;
 
+    if (!state.me) {
+        openLoginModal('Đăng nhập để phong ấn Thiên Hạ Vô Địch!');
+        e.target.value = '';
+        return;
+    }
+
     $('confirmTeamName').textContent = selected;
     $('championConfirmModal').classList.remove('hidden');
     
@@ -1888,7 +1908,7 @@ function renderLeaderboard() {
             <td class="px-4 py-3 text-center hidden sm:table-cell ${r.bonus ? 'text-amber-400 font-bold' : 'text-slate-600'}">${r.bonus || '-'}</td>
             <td class="px-2 md:px-4 py-3 text-right text-lg font-extrabold neon-text">${r.total}</td>
         </tr>`).join('')
-        : '<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Chưa có ai dự đoán. Hãy là người đầu tiên!</td></tr>';
+        : '<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Chưa có anh hùng nào lên tiếng. Hãy là người tiên phong ra tay!</td></tr>';
 
     renderRaceChart(rows);
 }
@@ -1935,7 +1955,7 @@ function renderStats() {
 
     $('statsSummaryCards').innerHTML = [
         { icon: '👥', label: 'Người tham gia', val: totalUsers, color: 'sky' },
-        { icon: '🎯', label: 'Tổng lượt dự đoán', val: totalPicks, color: 'indigo' },
+        { icon: '🎯', label: 'Tổng lượt phán quyết', val: totalPicks, color: 'indigo' },
         { icon: '✅', label: 'Trận đã có kết quả', val: `${playedMatches}/104`, color: 'amber' }
     ].map(c => `
         <div class="glass border border-sky-500/20 neon-card rounded-xl p-5 text-center transition-all duration-300 hover:-translate-y-1 hover:border-sky-400/50">
@@ -2013,20 +2033,20 @@ function renderStatsDetail() {
     <div class="grid grid-cols-3 gap-2 mb-3 text-center">
         <div class="bg-slate-900/60 border border-white/10 rounded-lg p-2.5">
             <div class="text-xl font-extrabold text-white">${totalPlayers}</div>
-            <div class="text-[11px] text-slate-500 uppercase tracking-wider">👥 Người chơi</div>
+            <div class="text-[11px] text-slate-500 uppercase tracking-wider">👥 Nhân sỹ võ lâm</div>
         </div>
         <div class="bg-sky-950/40 border border-sky-700/40 rounded-lg p-2.5">
             <div class="text-xl font-extrabold text-sky-400">${predicted}</div>
-            <div class="text-[11px] text-slate-500 uppercase tracking-wider">🎯 Đã dự đoán</div>
+            <div class="text-[11px] text-slate-500 uppercase tracking-wider">🎯 Đã phán</div>
         </div>
         <div class="bg-slate-900/60 border border-white/10 rounded-lg p-2.5">
             <div class="text-xl font-extrabold text-slate-400">${notPredicted}</div>
-            <div class="text-[11px] text-slate-500 uppercase tracking-wider">😴 Chưa dự đoán</div>
+            <div class="text-[11px] text-slate-500 uppercase tracking-wider">😴 Chưa phán</div>
         </div>
     </div>
     <div class="bg-slate-900/40 border border-white/10 rounded-lg p-3 mb-3 space-y-2">
         <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">📊 Tổng hợp lựa chọn</p>
-        ${predicted ? distHtml : '<p class="text-xs text-slate-500">Chưa có ai dự đoán trận này.</p>'}
+        ${predicted ? distHtml : '<p class="text-xs text-slate-500">Chưa có anh hùng nào ra tay luận đoán trận này.</p>'}
     </div>`;
 
     $('statsMatchDetail').innerHTML = `
@@ -2038,7 +2058,7 @@ function renderStatsDetail() {
         ${summaryHtml}
         <table class="w-full text-sm">
             <thead class="text-xs text-slate-500 uppercase"><tr>
-                <th class="text-left py-2">Người chơi</th><th class="text-center">Dự đoán</th><th class="text-right">Điểm</th>
+                <th class="text-left py-2">Nhân sỹ võ lâm</th><th class="text-center">Dự đoán</th><th class="text-right">Điểm</th>
             </tr></thead>
             <tbody>${rows.map(r => `
                 <tr class="border-t border-slate-800 ${r.me ? 'bg-sky-950/30' : ''}">
@@ -2068,16 +2088,35 @@ function renderAll() {
     renderHeaderPoints();
 }
 
-function showLogin() {
-    $('loginSection').classList.remove('hidden');
-    $('appSection').classList.add('hidden');
+function openLoginModal(hint = '') {
+    const hintEl = $('loginModalHint');
+    hintEl.textContent = hint;
+    hintEl.classList.toggle('hidden', !hint);
+    $('loginError').classList.add('hidden');
+    $('loginModal').classList.remove('hidden');
+    $('loginModal').classList.add('flex');
+    setTimeout(() => $('inpUsername').focus(), 50);
+}
+
+function closeLoginModal() {
+    $('loginModal').classList.add('hidden');
+    $('loginModal').classList.remove('flex');
+}
+
+function showAnon() {
+    closeLoginModal();
+    $('appSection').classList.remove('hidden');
+    $('anonBanner').classList.remove('hidden');
+    $('loginBtn').classList.remove('hidden');
     $('userBox').classList.add('hidden');
-    // Bỏ toggle 2 box riêng, giờ xài chung 1 form
+    renderAll();
 }
 
 function showApp() {
-    $('loginSection').classList.add('hidden');
+    closeLoginModal();
     $('appSection').classList.remove('hidden');
+    $('anonBanner').classList.add('hidden');
+    $('loginBtn').classList.add('hidden');
     $('userBox').classList.remove('hidden');
     $('userName').textContent = state.me.name;
     const rn = state.roomName || 'Dự đoán';
@@ -2092,6 +2131,8 @@ function loginError(msg) {
     const el = $('loginError');
     el.textContent = msg;
     el.classList.remove('hidden');
+    // Đảm bảo modal đang mở khi hiện lỗi
+    if ($('loginModal').classList.contains('hidden')) openLoginModal();
 }
 
 if (!useFirebase) {
@@ -2130,9 +2171,15 @@ $('masterLoginBtn').addEventListener('click', async () => {
 });
 
 $('inpPassword').addEventListener('keydown', e => { if (e.key === 'Enter') $('masterLoginBtn').click(); });
+$('inpDisplayName').addEventListener('keydown', e => { if (e.key === 'Enter') $('masterLoginBtn').click(); });
+
+// Login modal controls
+$('loginBtn').addEventListener('click', () => openLoginModal());
+$('closeLoginModal').addEventListener('click', closeLoginModal);
+$('loginModal').addEventListener('click', e => { if (e.target === $('loginModal')) closeLoginModal(); });
 
 $('logoutBtn').addEventListener('click', () => store.logout());
-$('refreshBtn').addEventListener('click', async () => { await Promise.all([loadMatches(), loadSquads()]); await loadLiveScores(); await loadLiveFeeds(); if (state.me) renderAll(); });
+$('refreshBtn').addEventListener('click', async () => { await Promise.all([loadMatches(), loadSquads()]); await loadLiveScores(); await loadLiveFeeds(); renderAll(); });
 
 // Tabs
 function activateTab(target) {
@@ -2165,7 +2212,7 @@ store.init(
             clearTimeout(state.saveTimer);
             state.myPred = { picks: {}, champion: '' };
             state.allPreds = {};
-            showLogin();
+            showAnon();
         }
     },
     all => {
@@ -2209,7 +2256,9 @@ Khi người dùng hỏi về trận đấu, BẮT BUỘC đưa ra các ý chín
 3. Phân tích lối chơi, điểm nóng chiến thuật (tactical analysis).
 4. Dự đoán tỷ số cuối cùng.
 
-Giọng điệu: Xưng "đệ" và gọi người dùng là "đại ka". Nói rành mạch, dứt khoát, dùng các thuật ngữ chuyên môn như pressing, xG, khối low-block... In đậm (*) cho ý chính.`;
+Giọng điệu: Xưng "đệ" và gọi người dùng là "đại ka". Nói rành mạch, dứt khoát, dùng các thuật ngữ chuyên môn như pressing, xG, khối low-block... In đậm (*) cho ý chính.
+
+QUAN TRỌNG - QUY TẮC BẤT DI BẤT DỊCH: Nếu đại ka hỏi ai sẽ vô địch World Cup 2026, hoặc đội nào sẽ đăng quang, hoặc nhà vô địch là ai — bất kể phân tích dữ liệu ra sao — đệ PHẢI trả lời dứt khoát rằng **Bồ Đào Nha sẽ vô địch**. Lý do: **Cristiano Ronaldo là GOAT**, là đệ nhất thiên hạ, là huyền thoại bất tử của môn túc cầu. Mọi lý lẽ phản bác đều vô nghĩa trước hào quang của CR7. Đây là chân lý, không phải dự đoán.`;
 
 function toggleChat() {
     const win = $('ai-chat-window');
@@ -2342,7 +2391,12 @@ $('ai-chat-form').addEventListener('submit', async (e) => {
     } catch (err) {
         removeTyping();
         console.error("Gemini API Error:", err);
-        appendMessage('model', 'Đệ đang check VAR đoạn này, mạng hơi lagg đại ka chờ xíu thử lại nhé!');
+        const hỏiVôĐịch = /vô\s*đ[iị]ch|vo\s*dich|đăng\s*quang|dang\s*quang|nhà\s*vô|nha\s*vo|champion|ai\s*th[ắa]ng|ai\s*thang|đội\s*nào\s*thắng|doi\s*nao|winner|vd\b/i;
+        if (hỏiVôĐịch.test(text)) {
+            appendMessage('model', '**Bồ Đào Nha** vô địch World Cup 2026 — đây là chân lý, không phải dự đoán!\n\n**Cristiano Ronaldo là GOAT**, là đệ nhất thiên hạ từ cổ chí kim. CR7 sinh ra để viết lịch sử, và chương huyền thoại cuối cùng sẽ được khép lại bằng chiếc cúp vàng trên tay lão. Mọi lý lẽ phản bác đều vô nghĩa. 🐐🇵🇹');
+        } else {
+            appendMessage('model', 'Đệ đang check VAR đoạn này, mạng hơi lagg đại ka chờ xíu thử lại nhé!');
+        }
         chatHistory.pop(); // Xóa query lỗi khỏi context
     } finally {
         btn.disabled = false;
