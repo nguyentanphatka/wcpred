@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 const SQUADS_URL = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.squads.json';
-const INDEX = path.join(__dirname, '..', 'index.html');
+const OUT_FILE = path.join(__dirname, '..', 'data', 'values.js');
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -47,11 +47,11 @@ async function playerData(id) {
   const players = [];
   for (const t of squads) for (const p of (t.players || [])) players.push({ team: t.name, ...p });
 
-  let html = fs.readFileSync(INDEX, 'utf8');
-  const reTn = /(<script id="tnhung71" type="application\/json">)([\s\S]*?)(<\/script>)/;
-  const mTn = html.match(reTn);
-  if (!mTn) throw new Error('Không tìm thấy <script id="tnhung71">');
-  const tn = JSON.parse(mTn[2]);
+  let tn = {};
+  try {
+    const raw = fs.readFileSync(OUT_FILE, 'utf8').replace(/^const VALUES_DATA = /, '').replace(/;\s*$/, '');
+    tn = JSON.parse(raw);
+  } catch { tn = { updated: '', source: '', currency: 'EUR (triệu)', values: {}, autoCount: 0 }; }
   const have = new Set(Object.keys(tn.values || {}).map(norm));
   const missing = players.filter(p => !have.has(norm(p.name)));
   console.log(`Tổng: ${players.length} · đã có giá: ${players.length - missing.length} · thiếu: ${missing.length}`);
@@ -86,10 +86,9 @@ async function playerData(id) {
   tn.source = 'transfermarkt.com (nhập tay) + FotMob (crawl tự động)';
   tn.autoCount = (tn.autoCount || 0) + adds.length;
 
-  // Nhúng thẳng vào index.html — KHÔNG ghi file phụ
+  // Ghi ra data/values.js
   const payload = JSON.stringify(tn);
-  html = html.replace(reTn, `$1\n${payload}\n$3`);
-  fs.writeFileSync(INDEX, html);
+  fs.writeFileSync(OUT_FILE, `const VALUES_DATA = ${payload};\n`);
 
   const still = missing.length - adds.length;
   console.log(`ĐÃ MERGE vào index.html · tổng giá trị có data: ${Object.keys(tn.values).length} · còn thiếu: ${still}`);

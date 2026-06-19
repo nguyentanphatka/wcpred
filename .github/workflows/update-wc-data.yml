@@ -1,0 +1,71 @@
+name: Update WC 2026 Data
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'   # every 30 minutes
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch latest data from openfootball
+        id: fetch
+        run: |
+          URL="https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json"
+          if curl -sf --max-time 30 "$URL" -o /tmp/wc2026_new.json; then
+            if python3 -c "
+          import json, sys
+          try:
+              d = json.load(open('/tmp/wc2026_new.json'))
+              assert isinstance(d.get('matches'), list) and len(d['matches']) > 0
+              print(f'OK: {len(d[\"matches\"])} matches')
+          except Exception as e:
+              print(f'INVALID: {e}', file=sys.stderr)
+              sys.exit(1)
+          "; then
+              echo "valid=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "valid=false" >> "$GITHUB_OUTPUT"
+              echo "::warning::Fetched data failed validation"
+            fi
+          else
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Failed to fetch WC data (network or HTTP error)"
+          fi
+
+      - name: Replace local data file
+        if: steps.fetch.outputs.valid == 'true'
+        run: cp /tmp/wc2026_new.json data/wc2026.json
+
+      - name: Crawl match details for newly finished matches
+        run: node tools/crawl-match-details.js
+
+      - name: Commit and push if anything changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          changed=false
+          if ! git diff --exit-code data/wc2026.json > /dev/null 2>&1; then
+            git add data/wc2026.json
+            changed=true
+          fi
+          if ! git diff --exit-code data/match-details.json > /dev/null 2>&1; then
+            git add data/match-details.json
+            changed=true
+          fi
+          if [ "$changed" = "true" ]; then
+            git commit -m "chore: update match data"
+            git push
+          else
+            echo "No changes — data is already up to date"
+          fi

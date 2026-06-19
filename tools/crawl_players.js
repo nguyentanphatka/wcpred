@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 const SQUADS_URL = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.squads.json';
-const INDEX = path.join(__dirname, '..', 'index.html');
+const OUT_FILE = path.join(__dirname, '..', 'data', 'playerdb.js');
 const UA = 'WC2026-PredictArena/1.0 (du doan noi bo; lien he: nguyentanphatuit@gmail.com)';
 const FOOTBALLER = 'Q937857'; // occupation: association football player
 
@@ -113,12 +113,7 @@ async function pool(items, n, fn) {
 
   const payload = JSON.stringify({ updated: new Date().toISOString().slice(0, 10), source: 'Wikidata / Wikimedia Commons', stats, players: db });
 
-  // 5) Nhúng vào index.html (thay nội dung <script id="playerdb">) — KHÔNG ghi file phụ
-
-  let html = fs.readFileSync(INDEX, 'utf8');
-  const re = /(<script id="playerdb" type="application\/json">)[\s\S]*?(<\/script>)/;
-  if (!re.test(html)) throw new Error('Không tìm thấy <script id="playerdb"> trong index.html');
-  html = html.replace(re, `$1\n${payload}\n$2`);
-  fs.writeFileSync(INDEX, html);
-  console.log('ĐÃ NHÚNG vào index.html —', (payload.length / 1024).toFixed(0), 'KB');
+  // 5) Ghi ra data/playerdb.js
+  fs.writeFileSync(OUT_FILE, `const PLAYERDB_DATA = ${payload};\n`);
+  console.log('ĐÃ GHI data/playerdb.js —', (payload.length / 1024).toFixed(0), 'KB');
 })().catch(e => { console.error('LỖI:', e); process.exit(1); });
