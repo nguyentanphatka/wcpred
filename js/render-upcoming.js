@@ -172,6 +172,6 @@ setInterval(async () => {
     if (!state.me || interacting() || !hasLiveMatch()) return;
     await loadLiveScores();
     await loadLiveFeeds();
-    renderUpcoming(); renderGroups(); renderBracket();
+    renderUpcoming(); renderGroups(); renderBracket(); renderMatches();
     renderLeaderboard(); renderStats(); renderHeaderPoints();
 }, LIVE_POLL_MS);

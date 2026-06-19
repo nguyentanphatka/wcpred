@@ -171,6 +171,9 @@ $('matchesTabPast').addEventListener('click', () => {
     renderMatches();
 });
 
+// Refresh countdown badges every 5 minutes
+setInterval(() => renderMatches(), 5 * 60 * 1000);
+
 // Toggle advanced panel: click anywhere on finished match row (or 🔍 button)
 document.addEventListener('click', e => {
     const row = e.target.closest('.match-row');
