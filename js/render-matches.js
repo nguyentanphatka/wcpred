@@ -96,10 +96,17 @@ function renderMatchList(matches) {
             badge = `<span class="text-[14px] text-emerald-500/80">✔ Kết thúc</span>`;
         } else {
             const diff = m.kickoff.getTime() - Date.now();
-            const h = Math.floor(diff / 3600000);
-            const min = Math.floor((diff % 3600000) / 60000);
-            if (diff < 86400000) {
-                badge = `<span class="text-[14px] text-amber-400">${h > 0 ? h + 'h ' : ''}${min}p nữa</span>`;
+            if (diff > 0 && diff < 7 * 86400000) {
+                const days = Math.floor(diff / 86400000);
+                const h = Math.floor((diff % 86400000) / 3600000);
+                const min = Math.floor((diff % 3600000) / 60000);
+                if (days > 0) {
+                    badge = `<span class="text-[14px] text-slate-400">${days}ng ${h}h nữa</span>`;
+                } else if (h > 0) {
+                    badge = `<span class="text-[14px] text-amber-400">${h}h ${min}p nữa</span>`;
+                } else {
+                    badge = `<span class="text-[14px] text-amber-400">${min}p nữa</span>`;
+                }
             }
         }
 
