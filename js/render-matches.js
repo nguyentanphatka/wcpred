@@ -59,13 +59,13 @@ function renderMatchList(matches) {
         // Score / state cell
         let scoreTxt, scoreClass;
         if (ft) {
-            scoreTxt = `<span class="tabular-nums font-extrabold text-lg">${ft[0]}</span><span class="text-slate-500 mx-1 font-light">-</span><span class="tabular-nums font-extrabold text-lg">${ft[1]}</span>`;
+            scoreTxt = `<span class="tabular-nums font-extrabold text-base sm:text-lg">${ft[0]}</span><span class="text-slate-500 mx-0.5 sm:mx-1 font-light">-</span><span class="tabular-nums font-extrabold text-base sm:text-lg">${ft[1]}</span>`;
             scoreClass = 'text-white';
         } else if (winner) {
             scoreTxt = `<span class="text-xs font-bold">${flagOf(winner)}<br>${esc(winner)}</span>`;
             scoreClass = 'text-emerald-400';
         } else if (live && m.live) {
-            scoreTxt = `<span class="tabular-nums font-extrabold text-lg text-rose-200">${m.live.h}</span><span class="text-rose-400 mx-1">-</span><span class="tabular-nums font-extrabold text-lg text-rose-200">${m.live.a}</span>`;
+            scoreTxt = `<span class="tabular-nums font-extrabold text-base sm:text-lg text-rose-200">${m.live.h}</span><span class="text-rose-400 mx-0.5 sm:mx-1">-</span><span class="tabular-nums font-extrabold text-base sm:text-lg text-rose-200">${m.live.a}</span>`;
             scoreClass = '';
         } else {
             scoreTxt = '<span class="text-slate-600 font-light">vs</span>';
@@ -93,7 +93,7 @@ function renderMatchList(matches) {
         if (live) {
             badge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-rose-400 bg-rose-950/60 border border-rose-700/50 rounded-full px-2 py-0.5 animate-pulse">🔴 LIVE${m.live ? ' · ' + esc(m.live.clock) : ''}</span>`;
         } else if (ft || winner) {
-            badge = `<span class="text-[14px] text-emerald-500/80">✔ Kết thúc</span>`;
+            badge = `<span class="text-[11px] sm:text-[14px] text-emerald-500/80">✔ Kết thúc</span>`;
         } else {
             const diff = m.kickoff.getTime() - Date.now();
             if (diff > 0 && diff < 7 * 86400000) {
@@ -101,11 +101,11 @@ function renderMatchList(matches) {
                 const h = Math.floor((diff % 86400000) / 3600000);
                 const min = Math.floor((diff % 3600000) / 60000);
                 if (days > 0) {
-                    badge = `<span class="text-[14px] text-slate-400">${days}ng ${h}h nữa</span>`;
+                    badge = `<span class="text-[11px] sm:text-[14px] text-slate-400">${days}ng ${h}h nữa</span>`;
                 } else if (h > 0) {
-                    badge = `<span class="text-[14px] text-amber-400">${h}h ${min}p nữa</span>`;
+                    badge = `<span class="text-[11px] sm:text-[14px] text-amber-400">${h}h ${min}p nữa</span>`;
                 } else {
-                    badge = `<span class="text-[14px] text-amber-400">${min}p nữa</span>`;
+                    badge = `<span class="text-[11px] sm:text-[14px] text-amber-400">${min}p nữa</span>`;
                 }
             }
         }
@@ -113,7 +113,7 @@ function renderMatchList(matches) {
         const kickStr = m.kickoff.toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit' })
             + ' ' + m.kickoff.toLocaleTimeString('vi-VN', { hour:'2-digit', minute:'2-digit' });
 
-        const advBtn = (ft || winner) ? `<button class="adv-match-btn text-sm text-indigo-400/70 hover:text-indigo-300 border border-indigo-800/40 rounded px-2 py-0.5 transition-colors" data-key="${esc(m.key)}">🔍</button>` : '';
+        const advBtn = (ft || winner) ? `<button class="adv-match-btn text-xs sm:text-sm text-indigo-400/70 hover:text-indigo-300 border border-indigo-800/40 rounded px-1.5 sm:px-2 py-0.5 transition-colors" data-key="${esc(m.key)}">🔍</button>` : '';
 
         // Advanced details panel — luôn có cho trận đã kết thúc
         const advPanel = (ft || winner) ? `
@@ -124,22 +124,22 @@ function renderMatchList(matches) {
         const hasAdv = !!(ft || winner);
         return `
         <div class="match-row border-b border-white/5 hover:bg-slate-800/40 transition-colors ${live ? 'bg-rose-950/10' : ''} ${hasAdv ? 'cursor-pointer' : ''}">
-            <div class="flex items-center gap-2 px-3 py-2.5">
+            <div class="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2.5">
                 <!-- time + label -->
-                <div class="w-28 shrink-0 text-right">
-                    <div class="text-[16px] text-slate-400 font-mono leading-tight">${kickStr}</div>
-                    <div class="text-[13px] text-slate-600 truncate">${label}</div>
+                <div class="w-16 sm:w-28 shrink-0 text-right">
+                    <div class="text-[10px] sm:text-[16px] text-slate-400 font-mono leading-tight">${kickStr}</div>
+                    <div class="text-[9px] sm:text-[13px] text-slate-600 truncate">${label}</div>
                 </div>
                 <!-- team 1 -->
-                <div class="flex-1 text-right text-sm font-semibold text-white truncate min-w-0">${teamHtml(m.team1, '', true)}</div>
+                <div class="flex-1 text-right text-xs sm:text-sm font-semibold text-white truncate min-w-0">${teamHtml(m.team1, '', true)}</div>
                 <!-- score -->
-                <div class="w-24 shrink-0 text-center ${scoreClass}">${scoreTxt}</div>
+                <div class="w-14 sm:w-24 shrink-0 text-center ${scoreClass}">${scoreTxt}</div>
                 <!-- team 2 -->
-                <div class="flex-1 text-sm font-semibold text-white truncate min-w-0">${teamHtml(m.team2, '', true)}</div>
+                <div class="flex-1 text-xs sm:text-sm font-semibold text-white truncate min-w-0">${teamHtml(m.team2, '', true)}</div>
                 <!-- pick + pts + adv -->
-                <div class="w-28 shrink-0 text-right space-y-0.5">
-                    <div class="text-xs">${pickTxt} ${ptsTxt ? '· ' + ptsTxt : ''}</div>
-                    <div class="flex items-center justify-end gap-1">${badge} ${advBtn}</div>
+                <div class="w-14 sm:w-28 shrink-0 text-right space-y-0.5">
+                    <div class="text-[10px] sm:text-xs">${pickTxt} ${ptsTxt ? '· ' + ptsTxt : ''}</div>
+                    <div class="flex items-center justify-end gap-0.5 sm:gap-1">${badge} ${advBtn}</div>
                 </div>
             </div>
             ${advPanel}

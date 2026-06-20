@@ -75,17 +75,17 @@
         </div>
     </div>
 
-    <main class="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">
+    <main class="flex-grow px-2 py-3 sm:p-4 md:p-6 max-w-7xl mx-auto w-full overflow-x-hidden">
 
         <!-- Status banner -->
-        <div id="statusBanner" class="bg-indigo-950/40 border border-indigo-800/50 rounded-xl p-3 mb-4 flex items-center justify-between text-sm">
-            <div class="flex items-center space-x-3">
-                <div class="w-4 h-4 border-2 border-indigo-400/30 border-t-indigo-400 rounded-full animate-spin" id="statusSpinner"></div>
-                <span class="font-medium text-indigo-200" id="statusText">Đang tải lịch thi đấu World Cup 2026...</span>
+        <div id="statusBanner" class="bg-indigo-950/40 border border-indigo-800/50 rounded-xl p-3 mb-4 flex flex-wrap items-center justify-between gap-y-1 text-sm">
+            <div class="flex items-center space-x-2">
+                <div class="w-4 h-4 shrink-0 border-2 border-indigo-400/30 border-t-indigo-400 rounded-full animate-spin" id="statusSpinner"></div>
+                <span class="font-medium text-indigo-200 text-xs sm:text-sm truncate" id="statusText">Đang tải lịch thi đấu World Cup 2026...</span>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 shrink-0">
                 <span class="text-xs bg-indigo-900/50 text-indigo-300 px-2 py-1 rounded" id="matchCountBadge">0 trận</span>
-                <button id="refreshBtn" class="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300" title="Tải lại kết quả mới nhất">⟳ Cập nhật KQ</button>
+                <button id="refreshBtn" class="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 whitespace-nowrap" title="Tải lại kết quả mới nhất">⟳ Cập nhật</button>
             </div>
         </div>
 
@@ -95,7 +95,7 @@
         </div>
 
         <!-- Anon mode banner -->
-        <div id="anonBanner" class="hidden bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 mb-4 flex items-center justify-between gap-3 text-sm">
+        <div id="anonBanner" class="hidden bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 mb-4 flex flex-wrap items-center justify-between gap-3 text-sm">
             <span class="text-slate-400">👀 Đang xem ở <strong class="text-slate-300">chế độ khách</strong> · Lịch thi đấu hiển thị đầy đủ</span>
             <button onclick="openLoginModal()" class="shrink-0 text-xs px-3 py-1.5 bg-sky-600 hover:bg-sky-500 rounded-md text-white font-semibold transition-colors">Đăng nhập để đoán mò</button>
         </div>

@@ -5,6 +5,7 @@ html { font-size: 16px; }
 
 /* Nền deep-navy với quầng sáng xanh vibrant (dark-first, glassmorphism-friendly) */
 body {
+    overflow-x: hidden;
     background-color: #060a14 !important;
     background-image:
         radial-gradient(1000px 500px at 85% -10%, rgba(59, 130, 246, 0.14), transparent 60%),
