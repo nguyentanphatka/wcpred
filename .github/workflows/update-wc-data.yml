@@ -65,6 +65,7 @@ jobs:
           fi
           if [ "$changed" = "true" ]; then
             git commit -m "chore: update match data"
+            git pull --rebase origin dev
             git push
           else
             echo "No changes — data is already up to date"
