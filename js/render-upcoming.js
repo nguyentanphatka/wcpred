@@ -163,6 +163,14 @@ function renderUpcoming() {
 // Đếm ngược trận sắp đá: nhịp mỗi phút
 setInterval(() => { if (state.me && !interacting()) renderUpcoming(); }, 60000);
 
+// Reload match-details.json mỗi 10 phút — tự động hiện data sau khi GitHub Action crawl xong
+setInterval(async () => {
+    const before = Object.keys(state.matchDetails || {}).length;
+    await loadMatchDetails();
+    const after = Object.keys(state.matchDetails || {}).length;
+    if (after !== before) renderMatches();
+}, 10 * 60 * 1000);
+
 // Tự cập nhật tỉ số trận đang đá
 const LIVE_POLL_MS = 30000;
 const hasLiveMatch = () => state.matches.some(m => !ftScore(m)
