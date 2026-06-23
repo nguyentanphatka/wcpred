@@ -213,6 +213,14 @@ function buildMatchAdvHtml(m) {
         </div>`).join('') : '';
     const hasLineup = md.lineups?.h?.length || md.lineups?.a?.length;
 
+    // Chấm điểm cầu thủ (FotMob)
+    const ratings = state.playerRatings?.[m.key];
+    const ratingColor = r => { const v = parseFloat(r) || 0; return v >= 8 ? 'text-emerald-400' : v >= 7 ? 'text-amber-400' : v >= 6 ? 'text-slate-300' : 'text-rose-400'; };
+    const ratingCol = arr => arr?.length ? arr.map(p =>
+        `<div class="flex items-baseline gap-1.5 leading-snug"><span class="inline-block w-6 text-slate-500 text-xs shrink-0">${esc(p.num)}</span><span class="flex-1 truncate">${esc(p.name)}</span><b class="${ratingColor(p.rating)} tabular-nums shrink-0">${esc(p.rating)}</b></div>`
+    ).join('') : '<div class="text-slate-600 text-xs">—</div>';
+    const hasRatings = ratings && (ratings.h?.length || ratings.a?.length);
+
     const sub = (icon, label, cls, content) => content ? `
         <details class="border border-white/5 rounded-lg p-3">
             <summary class="cursor-pointer text-sm font-semibold ${cls} py-0.5">${icon} ${label}</summary>
@@ -225,6 +233,11 @@ function buildMatchAdvHtml(m) {
             <div class="grid grid-cols-2 gap-x-4 text-sm">
                 <div class="text-right space-y-0.5 pr-4 border-r border-white/5">${luCol(md.lineups.h)}</div>
                 <div class="text-left space-y-0.5">${luCol(md.lineups.a)}</div>
+            </div>` : '')}
+        ${sub('⭐', 'Chấm điểm cầu thủ', 'text-amber-300/70 hover:text-amber-300', hasRatings ? `
+            <div class="grid grid-cols-2 gap-x-4 text-sm">
+                <div class="space-y-0.5 pr-4 border-r border-white/5">${ratingCol(ratings.h)}</div>
+                <div class="space-y-0.5">${ratingCol(ratings.a)}</div>
             </div>` : '')}
         ${sub('📊', 'Thống kê', 'text-emerald-300/70 hover:text-emerald-300', statsHtml ? `<div class="space-y-2">${statsHtml}</div>` : '')}
         ${sub('📝', 'Diễn biến', 'text-slate-400/70 hover:text-slate-300', comHtml ? `<div class="space-y-2 max-h-80 overflow-y-auto pr-1">${comHtml}</div>` : '')}

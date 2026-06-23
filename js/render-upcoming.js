@@ -165,9 +165,10 @@ setInterval(() => { if (state.me && !interacting()) renderUpcoming(); }, 60000);
 
 // Reload match-details.json mỗi 10 phút — tự động hiện data sau khi GitHub Action crawl xong
 setInterval(async () => {
-    const before = Object.keys(state.matchDetails || {}).length;
+    const before = Object.keys(state.matchDetails || {}).length + Object.keys(state.playerRatings || {}).length;
     await loadMatchDetails();
-    const after = Object.keys(state.matchDetails || {}).length;
+    await loadPlayerRatings();
+    const after = Object.keys(state.matchDetails || {}).length + Object.keys(state.playerRatings || {}).length;
     if (after !== before) renderMatches();
 }, 10 * 60 * 1000);
 

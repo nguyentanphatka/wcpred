@@ -11,7 +11,8 @@ const state = {
     squadTeam: '',
     roomId: 'default',
     roomName: '',
-    matchDetails: {}
+    matchDetails: {},
+    playerRatings: {}
 };
 const interacting = () => Date.now() - state.lastInteract < 2500;
 

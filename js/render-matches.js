@@ -45,6 +45,23 @@ function renderMatches() {
         </div>`;
 }
 
+// Bàn thắng (scorers) — lưới 2 cột: đội nhà trái, đội khách phải
+function matchGoalsBlock(md) {
+    if (!md?.goals || (!md.goals.h?.length && !md.goals.a?.length)) return '';
+    const line = gl => `<div class="truncate leading-tight"><span class="text-white">${esc(gl.name)}</span> <span class="text-amber-400 font-semibold">${esc(gl.min)}</span>${gl.pen ? '<span class="text-slate-500"> (pen)</span>' : ''}${gl.og ? '<span class="text-rose-400"> (OG)</span>' : ''}</div>`;
+    return `
+    <div class="grid grid-cols-2 gap-x-3 text-[11px] sm:text-sm border border-white/5 rounded-lg p-3">
+        <div class="text-right space-y-0.5 pr-3 border-r border-white/5">
+            <div class="text-[9px] sm:text-[11px] uppercase tracking-wider text-slate-600 mb-0.5">⚽ Bàn thắng</div>
+            ${md.goals.h?.length ? md.goals.h.map(line).join('') : '<div class="text-slate-600">—</div>'}
+        </div>
+        <div class="text-left space-y-0.5 pl-3">
+            <div class="text-[9px] sm:text-[11px] uppercase tracking-wider text-slate-600 mb-0.5">Bàn thắng ⚽</div>
+            ${md.goals.a?.length ? md.goals.a.map(line).join('') : '<div class="text-slate-600">—</div>'}
+        </div>
+    </div>`;
+}
+
 function renderMatchList(matches) {
     const rows = matches.map(m => {
         const ft = ftScore(m);
@@ -54,7 +71,7 @@ function renderMatchList(matches) {
         const pick = state.myPred.picks[m.key] || {};
         const earned = locked ? matchEarned(state.myPred, m) : null;
         const label = m.group ? esc(m.group) : (ROUND_VI[m.round] || esc(m.round));
-        const md = ft ? state.matchDetails?.[m.key] : null;
+        const md = (ft || winner) ? state.matchDetails?.[m.key] : null;
 
         // Score / state cell
         let scoreTxt, scoreClass;
@@ -117,7 +134,8 @@ function renderMatchList(matches) {
 
         // Advanced details panel — luôn có cho trận đã kết thúc
         const advPanel = (ft || winner) ? `
-        <div class="match-adv-panel hidden px-4 pb-3 pt-1 bg-slate-900/40 border-t border-white/5" data-adv-content="${esc(m.key)}">
+        <div class="match-adv-panel hidden px-4 pb-3 pt-1 bg-slate-900/40 border-t border-white/5 space-y-2" data-adv-content="${esc(m.key)}">
+            ${matchGoalsBlock(md)}
             ${buildMatchAdvHtml(m)}
         </div>` : '';
 

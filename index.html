@@ -354,7 +354,7 @@
     <script>
     (async function boot() {
         await setupStore();
-        const [loaded] = await Promise.all([loadMatches(), loadSquads(), loadMatchDetails()]);
+        const [loaded] = await Promise.all([loadMatches(), loadSquads(), loadMatchDetails(), loadPlayerRatings()]);
         if (loaded) { await loadLiveScores(); await loadLiveFeeds(); }
         store.init(
             user => {

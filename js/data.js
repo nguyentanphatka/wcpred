@@ -50,6 +50,16 @@ async function loadMatchDetails() {
     }
 }
 
+async function loadPlayerRatings() {
+    try {
+        const res = await fetch('./data/player-ratings.json', { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        state.playerRatings = await res.json();
+    } catch (e) {
+        console.warn('Không tải được player-ratings.json:', e);
+    }
+}
+
 async function loadSquads() {
     try {
         const res = await fetch(SQUADS_URL, { cache: 'no-store' });
